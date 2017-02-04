@@ -127,38 +127,18 @@ class StreamWrapper
             }
         }
 
-        if ($this->isWriteable()) {
-            $options['name'] = $this->file;
-            $this->stream = $this->bucket->getStreamableUploader(
-                '',
-                $options
-            );
-        } elseif ($this->isReadable()) {
+        if (in_array($mode, ['w', 'wb', 'wt'])) {
+            $this->stream = new WritableStream($this->bucket, $this->file, $options);
+        } elseif (in_array($this->mode, ['r', 'rb', 'rt'])) {
             try {
-                $options['httpOptions']['stream'] = true;
-                $this->stream = $this->bucket->object($this->file)->downloadAsStream($options);
-            } catch (GoogleException $ex) {
+                $this->stream = new LazyReadString($this->bucket, $this->file, $options);
+            } catch (ServiceException $ex) {
                 return false;
             }
         } else {
             return false;
         }
         return true;
-    }
-
-    private function getStream()
-    {
-        return $this->stream;
-    }
-
-    private function isWriteable()
-    {
-        return in_array($this->mode, ['w', 'wb', 'wt']);
-    }
-
-    private function isReadable()
-    {
-        return in_array($this->mode, ['r', 'rb', 'rt']);
     }
 
     // @codingStandardsIgnoreStart
@@ -172,7 +152,7 @@ class StreamWrapper
     public function stream_read($count)
     {
         // @codingStandardsIgnoreEnd
-        return $this->getStream()->read($count);
+        return $this->stream->read($count);
     }
 
     // @codingStandardsIgnoreStart
@@ -186,7 +166,7 @@ class StreamWrapper
     public function stream_write($data)
     {
         // @codingStandardsIgnoreEnd
-        return $this->getStream()->write($data);
+        return $this->stream->write($data);
     }
 
     // @codingStandardsIgnoreStart
@@ -198,25 +178,15 @@ class StreamWrapper
     public function stream_stat()
     {
         // @codingStandardsIgnoreEnd
-        $size = $this->getStream()->getSize();
-        if (!$size) {
-            foreach ($this->getStream()->getMetadata('wrapper_data') as $value) {
-                if (substr($value, 0, 15) == "Content-Length:") {
-                    $size = (int) substr($value, 16);
-                    break;
-                }
-            }
-        }
-
         return [
             'dev'     => 0,
             'ino'     => 0,
-            'mode'    => $this->isWriteable() ? 33188 : 33060, // equivalent to 10644 and 10444 in octal
+            'mode'    => $this->stream->isWritable() ? 33188 : 33060, // equivalent to 10644 and 10444 in octal
             'nlink'   => 0,
             'uid'     => 0,
             'gid'     => 0,
             'rdev'    => 0,
-            'size'    => $size,
+            'size'    => $this->stream->getSize(),
             'atime'   => 0,
             'mtime'   => 0,
             'ctime'   => 0,
@@ -234,7 +204,7 @@ class StreamWrapper
     public function stream_eof()
     {
         // @codingStandardsIgnoreEnd
-        return $this->getStream()->eof();
+        return $this->stream->eof();
     }
 
     // @codingStandardsIgnoreStart
@@ -245,7 +215,7 @@ class StreamWrapper
     {
         // @codingStandardsIgnoreEnd
         if (isset($this->stream)) {
-            $this->getStream()->close();
+            $this->stream->close();
         }
     }
 
@@ -274,7 +244,7 @@ class StreamWrapper
     public function stream_tell()
     {
         // @codingStandardsIgnoreEnd
-        return $this->getStream()->tell();
+        return $this->stream->tell();
     }
 
     // @codingStandardsIgnoreStart

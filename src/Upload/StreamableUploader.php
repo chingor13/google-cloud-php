@@ -21,6 +21,7 @@ use Google\Cloud\Exception\GoogleException;
 use Google\Cloud\Exception\ServiceException;
 use Google\Cloud\RequestWrapper;
 use GuzzleHttp\Psr7\BufferStream;
+use GuzzleHttp\Psr7\LimitStream;
 use GuzzleHttp\Psr7\Request;
 use Psr\Http\Message\StreamInterface;
 
@@ -30,63 +31,6 @@ use Psr\Http\Message\StreamInterface;
  */
 class StreamableUploader extends ResumableUploader
 {
-    const DEFAULT_WRITE_CHUNK_SIZE = 262144;
-
-    /**
-     * @var BufferStream Store data not yet sent to the server. We can only
-     *      send data in multiples of 262144;
-     */
-    private $buffer;
-
-    /**
-     * @param RequestWrapper $requestWrapper
-     * @param string|resource|StreamInterface $data
-     * @param string $uri
-     * @param array $options [optional] {
-     *     Optional configuration.
-     *
-     *     @type array $metadata Metadata on the resource.
-     *     @type int $chunkSize Size of the chunks to send incrementally during
-     *           a resumable upload. Must be in multiples of 262144 bytes.
-     *     @type array $httpOptions HTTP client specific configuration options.
-     *     @type int $retries Number of retries for a failed request.
-     *           **Defaults to** `3`.
-     *     @type string $contentType Content type of the resource.
-     * }
-     */
-    public function __construct(
-        RequestWrapper $requestWrapper,
-        $data,
-        $uri,
-        array $options = []
-    ) {
-        parent::__construct($requestWrapper, $data, $uri, $options);
-        $this->resetBuffer($this->data);
-        $this->chunkSize = $this->chunkSize ?: self::DEFAULT_WRITE_CHUNK_SIZE;
-    }
-
-    /**
-     * Ensure we close the stream when this uploader is destroyed.
-     */
-    public function __destruct()
-    {
-        $this->close();
-    }
-
-    /**
-     * Write some partial data. If there's enough data to send a chunk,
-     * then we will send a chunk. Any remaining data is sent on close.
-     *
-     * @param StreamInterface|string $data The data being written. Can be a string or stream.
-     * @return int The number of bytes written.
-     */
-    public function write($data)
-    {
-        // append data onto buffer
-        $this->buffer->write($data);
-        $this->upload(false);
-        return strlen($data);
-    }
 
     /**
      * Triggers the upload process.
@@ -97,28 +41,28 @@ class StreamableUploader extends ResumableUploader
      * @return array
      * @throws GoogleException
      */
-    public function upload($remainder = true)
+    public function upload($writeSize = null)
     {
-        // determine how much data to write
-        $writeSize = $this->getChunkedWriteSize($remainder);
-        if ($writeSize == 0) {
-            return [];
-        }
-
         // find or create the resumeUri
         $resumeUri = $this->getResumeUri();
 
         $rangeStart = $this->rangeStart;
-        $rangeEnd = $remainder ? "*" : $rangeStart + $writeSize - 1;
+        if ($writeSize) {
+            $rangeEnd = $rangeStart + $writeSize - 1;
+            $contentLength = $writeSize;
+            $data = $this->data->read($writeSize);
+        } else {
+            $rangeEnd = '*';
+            $data = $this->data->getContents();
+            $contentLength = strlen($data);
+        }
 
-        $data = $this->buffer->read($writeSize);
-
-        // do the streaming write
         $headers = [
-            'Content-Length'    => $writeSize,
-            'Content-Type'      => $this->contentType,
-            'Content-Range'     => "bytes $rangeStart-$rangeEnd/*"
+            'Content-Length' => $contentLength,
+            'Content-Type' => $this->contentType,
+            'Content-Range' => "bytes $rangeStart-$rangeEnd/*",
         ];
+
         $request = new Request(
             'PUT',
             $resumeUri,
@@ -137,43 +81,9 @@ class StreamableUploader extends ResumableUploader
         }
 
         // reset the buffer with the remaining contents
-        $this->resetBuffer($this->buffer->getContents());
-        $this->rangeStart += $writeSize;
+        $this->rangeStart += $contentLength;
 
         return json_decode($response->getBody(), true);
     }
 
-    /**
-     * Determines the length of content to write
-     *
-     * @return int
-     */
-    private function getChunkedWriteSize($remainder)
-    {
-        $bufferSize = $this->buffer->getSize();
-        if ($remainder) {
-            return $bufferSize;
-        } else {
-            return floor($bufferSize / $this->chunkSize) * $this->chunkSize;
-        }
-    }
-
-    /**
-     * Finish writing the rest of the file.
-     */
-    public function close()
-    {
-        $this->upload();
-    }
-
-    /**
-     * After we've sent data, create a new buffer with the remaining data.
-     *
-     * @param string $data The data to store.
-     */
-    private function resetBuffer($data = "")
-    {
-        $this->buffer = new BufferStream($this->chunkSize);
-        $this->buffer->write($data);
-    }
 }
