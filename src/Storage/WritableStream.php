@@ -18,7 +18,6 @@
 namespace Google\Cloud\Storage;
 
 use GuzzleHttp\Psr7\BufferStream;
-use GuzzleHttp\Psr7\LimitStream;
 use GuzzleHttp\Psr7\StreamDecoratorTrait;
 use Psr\Http\Message\StreamInterface;
 
@@ -43,7 +42,6 @@ class WritableStream implements StreamInterface
             'name'      => $filename,
             'chunkSize' => $this->chunkSize
         ]);
-        $this->uploader->getResumeUri();
     }
 
     public function write($string)
@@ -69,25 +67,6 @@ class WritableStream implements StreamInterface
             }
             $this->uploader = null;
         }
-    }
-
-    public function isWritable()
-    {
-        return true;
-    }
-
-    public function tell()
-    {
-        return 0;
-    }
-
-    public function getChunkedStream()
-    {
-        return new LimitStream(
-            $this,
-            $this->getChunkedWriteSize(),
-            0
-        );
     }
 
     private function resetBuffer($data = null)

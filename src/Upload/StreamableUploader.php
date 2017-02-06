@@ -19,18 +19,15 @@ namespace Google\Cloud\Upload;
 
 use Google\Cloud\Exception\GoogleException;
 use Google\Cloud\Exception\ServiceException;
-use Google\Cloud\RequestWrapper;
-use GuzzleHttp\Psr7\BufferStream;
-use GuzzleHttp\Psr7\LimitStream;
 use GuzzleHttp\Psr7\Request;
-use Psr\Http\Message\StreamInterface;
 
 /**
  * Uploader that is a special case of the ResumableUploader where we can write
  * the file contents in a streaming manner.
  */
-class StreamableUploader extends ResumableUploader
+class StreamableUploader extends AbstractUploader
 {
+    use ResumableUploadApiTrait;
 
     /**
      * Triggers the upload process.
@@ -84,6 +81,11 @@ class StreamableUploader extends ResumableUploader
         $this->rangeStart += $contentLength;
 
         return json_decode($response->getBody(), true);
+    }
+
+    private function fullDataSize()
+    {
+        return 0;
     }
 
 }

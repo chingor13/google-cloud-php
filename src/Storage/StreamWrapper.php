@@ -131,7 +131,7 @@ class StreamWrapper
             $this->stream = new WritableStream($this->bucket, $this->file, $options);
         } elseif (in_array($this->mode, ['r', 'rb', 'rt'])) {
             try {
-                $this->stream = new LazyReadString($this->bucket, $this->file, $options);
+                $this->stream = new LazyReadStream($this->bucket, $this->file, $options);
             } catch (ServiceException $ex) {
                 return false;
             }

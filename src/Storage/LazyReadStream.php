@@ -25,14 +25,14 @@ use Psr\Http\Message\StreamInterface;
  * content in order to do copy operations. This should be available in the
  * HTTP Content-Length header.
  */
-class LazyReadString implements StreamInterface
+class LazyReadStream implements StreamInterface
 {
     use StreamDecoratorTrait;
 
     public function __construct($bucket, $filename, $options)
     {
         $options['httpOptions']['stream'] = true;
-        $this->stream = $bucket->object($filename)->downloadAsStream($options));
+        $this->stream = $bucket->object($filename)->downloadAsStream($options);
     }
 
     public function getSize()
@@ -42,7 +42,7 @@ class LazyReadString implements StreamInterface
 
     private function getSizeFromHeaders()
     {
-        foreach ($this->getMetadata('wrapper_data')) as $value) {
+        foreach ($this->getMetadata('wrapper_data') as $value) {
             if (substr($value, 0, 15) == "Content-Length:") {
                 return (int) substr($value, 16);
             }
