@@ -85,6 +85,8 @@ class StreamableUploader extends AbstractUploader
 
     private function fullDataSize()
     {
+        // Return 0 because we don't know the full size of the data we're
+        // writing until we close the file
         return 0;
     }
 

@@ -34,7 +34,17 @@ class WritableStream implements StreamInterface
 
     private $chunkSize;
 
-    public function __construct($bucket, $filename, $options)
+    /**
+     * @param Bucket $bucket The bucket to write to
+     * @param string $filename The name of the file to write
+     * @param array $options [optional] {
+     *     Optional configuration.
+     *
+     *     @type int $chunkSize Size of the chunks to send incrementally during
+     *           a resumable upload. Must be in multiples of 262144 bytes.
+     * }
+     */
+    public function __construct($bucket, $filename, array $options = [])
     {
         $this->chunkSize = isset($options['chunkSize']) ? $options['chunkSize'] : self::DEFAULT_WRITE_CHUNK_SIZE;
         $this->stream = new BufferStream($this->chunkSize);
@@ -44,6 +54,13 @@ class WritableStream implements StreamInterface
         ]);
     }
 
+    /**
+     * Write data to the stream. If there's enough buffered to send a chunk,
+     * then do so.
+     *
+     * @param string $string Data to write
+     * @return int
+     */
     public function write($string)
     {
         $length = $this->stream->write($string);
@@ -55,6 +72,9 @@ class WritableStream implements StreamInterface
         return $length;
     }
 
+    /**
+     * Close the stream. Finishes writing whatever buffered data is remaining.
+     */
     public function close()
     {
         // on close, write the remaining data
