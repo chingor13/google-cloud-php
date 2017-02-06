@@ -33,13 +33,17 @@ class WritableStream implements StreamInterface
 
     const DEFAULT_WRITE_CHUNK_SIZE = 262144;
 
+    private $chunkSize;
+
     public function __construct($bucket, $filename, $options)
     {
-        $this->stream = new BufferStream(self::DEFAULT_WRITE_CHUNK_SIZE);
+        $this->chunkSize = isset($options['chunkSize']) ? $options['chunkSize'] : self::DEFAULT_WRITE_CHUNK_SIZE;
+        $this->stream = new BufferStream($this->chunkSize);
         $this->uploader = $bucket->getStreamableUploader($this, $options + [
             'name'      => $filename,
-            'chunkSize' => self::DEFAULT_WRITE_CHUNK_SIZE
+            'chunkSize' => $this->chunkSize
         ]);
+        $this->uploader->getResumeUri();
     }
 
     public function write($string)
@@ -88,7 +92,7 @@ class WritableStream implements StreamInterface
 
     private function resetBuffer($data = null)
     {
-        $this->stream = new BufferStream(self::DEFAULT_WRITE_CHUNK_SIZE);
+        $this->stream = new BufferStream($this->chunkSize);
         if ($data) {
             $this->stream->write($data);
         }
@@ -111,7 +115,7 @@ class WritableStream implements StreamInterface
         if ($remainder) {
             return null;
         } else {
-            return (int) floor($bufferSize / self::DEFAULT_WRITE_CHUNK_SIZE) * self::DEFAULT_WRITE_CHUNK_SIZE;
+            return (int) floor($bufferSize / $this->chunkSize) * $this->chunkSize;
         }
     }
 }
