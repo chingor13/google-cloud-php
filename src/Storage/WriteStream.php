@@ -98,6 +98,6 @@ class WriteStream implements StreamInterface
 
     private function getChunkedWriteSize()
     {
-        return floor($this->getSize() / $this->chunkSize) * $this->chunkSize;
+        return (int) floor($this->getSize() / $this->chunkSize) * $this->chunkSize;
     }
 }
