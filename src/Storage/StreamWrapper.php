@@ -514,7 +514,7 @@ class StreamWrapper
         }
 
         // equivalent to 40777 and 40444 in octal
-        $mode = $this->isBucketWritable($this->file)
+        $mode = $this->bucket->isWritable()
             ? self::DIRECTORY_WRITABLE_MODE
             : self::DIRECTORY_READABLE_MODE;
         return $this->makeStatArray([
@@ -533,7 +533,7 @@ class StreamWrapper
         }
 
         // equivalent to 100666 and 100444 in octal
-        $mode = $this->isBucketWritable()
+        $mode = $this->bucket->isWritable()
             ? self::FILE_WRITABLE_MODE
             : self::FILE_READABLE_MODE;
         $size = (int) $info['size'];
@@ -546,34 +546,6 @@ class StreamWrapper
             'mtime' => $updated,
             'ctime' => $created
         ]);
-    }
-
-    /**
-     * Returns whether the bucket with the given file prefix is writable.
-     * Tries to create a temporary file as a resumable upload which will
-     * not be completed (and cleaned up by GCS).
-     *
-     * @param  string  $prefix Optional folder within the bucket.
-     * @return boolean
-     */
-    private function isBucketWritable($prefix = null)
-    {
-        $name = '__tempfile';
-        if ($prefix) {
-            $name = "$prefix/$name";
-        }
-        $uploader = $this->bucket->getResumableUploader(
-          Psr7\stream_for(''),
-          ['name' => $name]
-        );
-        try {
-            $uploader->getResumeUri();
-        } catch (ServiceException $e) {
-            throw $e;
-            return false;
-        }
-
-        return true;
     }
 
     private function isDirectory($path)
