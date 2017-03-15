@@ -44,4 +44,12 @@ interface TracerInterface
      * @return Trace
      */
     public function trace();
+
+    /**
+     * Add a label to the primary TraceSpan
+     *
+     * @param string $label
+     * @param string $value
+     */
+    public function addLabel($label, $value);
 }

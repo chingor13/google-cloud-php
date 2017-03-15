@@ -85,10 +85,7 @@ class RequestTracer
             'name' => self::DEFAULT_MAIN_SPAN_NAME
         ]);
 
-        register_shutdown_function(function() use ($tracer, $reporter) {
-            $tracer->finishSpan();
-            $reporter->report($tracer);
-        });
+        register_shutdown_function(array(static::class, 'report'), $reporter, $tracer);
 
         self::$tracer = $tracer;
     }
@@ -115,6 +112,25 @@ class RequestTracer
     public static function context()
     {
         return self::$tracer->context();
+    }
+
+    public static function report($reporter, $tracer)
+    {
+        $responseCode = http_response_code();
+
+        // If a redirect, add the HTTP_REDIRECTED_URL label to the main span
+        if ($responseCode == 301 || $responseCode == 302) {
+            foreach (headers_list() as $header) {
+                if (substr($header, 0, 9) == "Location:") {
+                    $tracer->addLabel(self::HTTP_REDIRECTED_URL, substr($header, 10));
+                    break;
+                }
+            }
+        }
+
+        $tracer->addLabel(self::HTTP_STATUS_CODE, $responseCode);
+        $tracer->finishSpan();
+        $reporter->report($tracer);
     }
 
     private static function fetchHeaders($options)
