@@ -95,17 +95,17 @@ class RequestTracer
 
     public static function instrument(array $spanOptions, callable $callable)
     {
-        self::$tracer->instrument($spanOptions, $callable);
+        return self::$tracer->instrument($spanOptions, $callable);
     }
 
     public static function startSpan($spanOptions)
     {
-        self::$tracer->startSpan($spanOptions);
+        return self::$tracer->startSpan($spanOptions);
     }
 
     public static function finishSpan()
     {
-        self::$tracer->finishSpan();
+        return self::$tracer->finishSpan();
     }
 
     /**
