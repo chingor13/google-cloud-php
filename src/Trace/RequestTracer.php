@@ -172,7 +172,7 @@ class RequestTracer
             self::HTTP_HOST => ['HTTP_HOST', 'SERVER_NAME']
         ];
         foreach ($labelMap as $labelKey => $headerKeys) {
-            $val = array_reduce($headerKeys, function($carry, $headerKey) use ($headers) {
+            $val = array_reduce($headerKeys, function ($carry, $headerKey) use ($headers) {
                 return $carry ?: (array_key_exists($headerKey, $headers) ? $headers[$headerKey] : null);
             });
             $labels[$labelKey] = $val;

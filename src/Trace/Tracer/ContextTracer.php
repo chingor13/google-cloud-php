@@ -126,5 +126,4 @@ class ContextTracer implements TracerInterface
             $this->spans[0]->addLabel($label, $value);
         }
     }
-
 }
