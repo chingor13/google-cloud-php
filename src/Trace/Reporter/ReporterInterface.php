@@ -1,8 +1,10 @@
 <?php
 
-namespace Google\Cloud\Trace;
+namespace Google\Cloud\Trace\Reporter;
 
-interface TraceReporterInterface
+use Google\Cloud\Trace\Tracer\TracerInterface;
+
+interface ReporterInterface
 {
     /**
      * Report the provided Trace to a backend.

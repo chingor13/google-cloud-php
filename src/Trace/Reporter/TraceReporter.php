@@ -15,15 +15,17 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Trace;
+namespace Google\Cloud\Trace\Reporter;
 
 use Google\Cloud\Core\Exception\ServiceException;
+use Google\Cloud\Trace\TraceClient;
+use Google\Cloud\Trace\Tracer\TracerInterface;
 
 /**
  * This implementation of the TraceReporterInterface uses a provided TraceClient to
  * report Traces and their TraceSpans to Stackdriver directly.
  */
-class TraceReporter implements TraceReporterInterface
+class TraceReporter implements ReporterInterface
 {
     /**
      * @var TraceClient

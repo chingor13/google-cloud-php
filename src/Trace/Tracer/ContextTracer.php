@@ -1,6 +1,9 @@
 <?php
 
-namespace Google\Cloud\Trace;
+namespace Google\Cloud\Trace\Tracer;
+
+use Google\Cloud\Trace\Trace;
+use Google\Cloud\Trace\TraceSpan;
 
 class ContextTracer implements TracerInterface
 {
@@ -59,7 +62,7 @@ class ContextTracer implements TracerInterface
      * Start a new Span. The start time is already set to the current time.
      *
      * @param  array  $spanOptions [description]
-     * @return Span
+     * @return TraceSpan
      */
     public function startSpan(array $spanOptions)
     {
@@ -79,7 +82,7 @@ class ContextTracer implements TracerInterface
     /**
      * Finish the current context's Span.
      *
-     * @return Span The span just finished.
+     * @return TraceSpan The span just finished.
      */
     public function finishSpan()
     {
@@ -93,7 +96,7 @@ class ContextTracer implements TracerInterface
     /**
      * Return the current context.
      *
-     * @return Span
+     * @return TraceSpan
      */
     public function context()
     {

@@ -6,6 +6,10 @@ use Google\Cloud\Trace\Sampler\AlwaysOffSampler;
 use Google\Cloud\Trace\Sampler\AlwaysOnSampler;
 use Google\Cloud\Trace\Sampler\QpsSampler;
 use Google\Cloud\Trace\Sampler\RandomSampler;
+use Google\Cloud\Trace\Tracer\ContextTracer;
+use Google\Cloud\Trace\Tracer\NullTracer;
+use Google\Cloud\Trace\Tracer\TracerInterface;
+use Google\Cloud\Trace\Reporter\ReporterInterface;
 
 class RequestTracer
 {
@@ -63,7 +67,7 @@ class RequestTracer
      */
     private static $tracer;
 
-    public static function start(TraceReporterInterface $reporter, array $options)
+    public static function start(ReporterInterface $reporter, array $options)
     {
         $sampler = static::samplerFactory($options);
         $headers = static::fetchHeaders($options);
@@ -75,7 +79,7 @@ class RequestTracer
 
         $tracer = $sampler->shouldSample()
             ? new ContextTracer($projectId)
-            : new NoopTracer();
+            : new NullTracer();
 
         $tracer->startSpan($options + $context + [
             'name' => self::DEFAULT_MAIN_SPAN_NAME
