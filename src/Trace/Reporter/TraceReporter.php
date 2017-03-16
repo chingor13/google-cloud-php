@@ -55,7 +55,6 @@ class TraceReporter implements ReporterInterface
         try {
             $this->client->insertTrace($trace);
         } catch (ServiceException $e) {
-            var_dump($e);
             return false;
         }
         return true;
