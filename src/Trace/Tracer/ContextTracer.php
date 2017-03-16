@@ -1,10 +1,30 @@
 <?php
+/**
+ * Copyright 2017 Google Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 namespace Google\Cloud\Trace\Tracer;
 
 use Google\Cloud\Trace\Trace;
 use Google\Cloud\Trace\TraceSpan;
 
+/**
+ * This implementation of the TracerInterface manages your trace context throughout
+ * the request. It maintains a stack of `TraceSpan` records that are currently open
+ * allowing you to know the current context at any moment.
+ */
 class ContextTracer implements TracerInterface
 {
     /**
@@ -24,25 +44,18 @@ class ContextTracer implements TracerInterface
      */
     private $stack = [];
 
-    public static function build($config)
-    {
-        $projectId = array_key_exists('projectId', $config)
-            ? $config['projectId']
-            : null;
-        $traceId = array_key_exists('traceId', $config)
-            ? $config['traceId']
-            : null;
-
-        return new static($projectId, $traceId);
-    }
-
+    /**
+     * Create a new trace context.
+     *
+     * @param string $projectId
+     */
     public function __construct($projectId)
     {
         $this->trace = new Trace($projectId);
     }
 
     /**
-     * Instrument a callable by creating a Span that
+     * Instrument a callable by creating a Span that manages the startTime and endTime.
      *
      * @param  array    $spanOptions [description]
      * @param  callable $callable    The callable to instrument.

@@ -1,4 +1,19 @@
 <?php
+/**
+ * Copyright 2017 Google Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 namespace Google\Cloud\Trace;
 
@@ -10,7 +25,12 @@ use Google\Cloud\Trace\Tracer\ContextTracer;
 use Google\Cloud\Trace\Tracer\NullTracer;
 use Google\Cloud\Trace\Tracer\TracerInterface;
 use Google\Cloud\Trace\Reporter\ReporterInterface;
+use Google\Cloud\Trace\TraceSpan;
 
+/**
+ * This class provides static fuctions to give you access to the current
+ * request's singleton tracer.
+ */
 class RequestTracer
 {
     const HTTP_HEADER = 'HTTP_X_CLOUD_TRACE_CONTEXT';
@@ -67,6 +87,13 @@ class RequestTracer
      */
     private static $tracer;
 
+    /**
+     * Start a new trace session for this request. You should call this as early as
+     * possible for the most accurate results.
+     *
+     * @param  ReporterInterface $reporter How to report traces at the end of the request
+     * @param  array             $options  [description]
+     */
     public static function start(ReporterInterface $reporter, array $options)
     {
         $sampler = static::samplerFactory($options);
@@ -90,31 +117,59 @@ class RequestTracer
         self::$tracer = $tracer;
     }
 
+    /**
+     * Instrument a callable by creating a TraceSpan that manages the startTime and endTime.
+     * If an exception is thrown while executing the callable, the exception will be caught,
+     * the span will be closed, and the exception will be re-thrown.
+     *
+     * @param  array    $spanOptions [description]
+     * @param  callable $callable    The callable to instrument.
+     * @return mixed Returns whatever the callable returns
+     */
     public static function instrument(array $spanOptions, callable $callable)
     {
         return self::$tracer->instrument($spanOptions, $callable);
     }
 
+    /**
+     * Explicitly start a new TraceSpan. You will need to manage finishing the TraceSpan,
+     * including handling any thrown exceptions.
+     *
+     * @param  [type] $spanOptions [description]
+     * @return TraceSpan
+     */
     public static function startSpan($spanOptions)
     {
         return self::$tracer->startSpan($spanOptions);
     }
 
+    /**
+     * Explicitly finish the current context (TraceSpan).
+     *
+     * @return TraceSpan
+     */
     public static function finishSpan()
     {
         return self::$tracer->finishSpan();
     }
 
     /**
-     * Return the current span
-     * @return Span
+     * Return the current context (TraceSpan)
+     *
+     * @return TraceSpan
      */
     public static function context()
     {
         return self::$tracer->context();
     }
 
-    public static function report($reporter, $tracer)
+    /**
+     * Clean up and report the provided TracerInterface using the provided TraceReporterInterface
+     *
+     * @param  TraceReporterInterface $reporter The trace reporter to use
+     * @param  TracerInterface $tracer The tracer to report.
+     */
+    public static function report(TraceReporterInterface $reporter, TracerInterface $tracer)
     {
         $responseCode = http_response_code();
 
