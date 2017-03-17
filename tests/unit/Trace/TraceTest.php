@@ -17,6 +17,7 @@
 
 namespace Google\Cloud\Tests\Unit\Trace;
 
+use Google\Cloud\Trace\Connection\ConnectionInterface;
 use Google\Cloud\Trace\Trace;
 use Google\Cloud\Trace\TraceSpan;
 
@@ -25,11 +26,21 @@ use Google\Cloud\Trace\TraceSpan;
  */
 class TraceTest extends \PHPUnit_Framework_TestCase
 {
+    /** @var ConnectionInterface|ObjectProphecy */
+    public $connection;
+
+    public function setUp()
+    {
+        $this->connection = $this->prophesize(ConnectionInterface::class);
+    }
+
     public function testLoadFromArray()
     {
-        $trace = new Trace('myproject', [
-            'traceId' => '1234abcd',
-            'spans' => [
+        $trace = new Trace(
+            $this->connection->reveal(),
+            'myproject',
+            '1234abcd',
+            [
                 [
                     'spanId' => '12345',
                     'kind' => 'SPAN_KIND_UNSPECIFIED',
@@ -38,7 +49,7 @@ class TraceTest extends \PHPUnit_Framework_TestCase
                     'endTime' => ''
                 ]
             ]
-        ]);
+        );
         $this->assertEquals('myproject', $trace->projectId());
         $this->assertEquals('1234abcd', $trace->traceId());
         $this->assertEquals(1, count($trace->spans()));
@@ -49,7 +60,33 @@ class TraceTest extends \PHPUnit_Framework_TestCase
 
     public function testGeneratesDefaultTraceId()
     {
-        $trace = new Trace('myproject');
+        $trace = new Trace($this->connection->reveal(), 'myproject');
         $this->assertRegExp('/^[0-9a-f]{32}$/', $trace->traceId());
+    }
+
+    public function testBuildsSpan()
+    {
+        $trace = new Trace($this->connection->reveal(), 'myproject');
+        $span = $trace->span(['name' => 'myspan']);
+        $this->assertInstanceOf(TraceSpan::class, $span);
+        $this->assertEquals('myspan', $span->name());
+    }
+
+    public function testLazyLoadsSpans()
+    {
+        $this->connection->getTrace(['projectId' => 'myproject', 'traceId' => '1'])->willReturn([
+            'projectId' => 'myproject',
+            'traceId' => '1',
+            'spans' => [
+                ['name' => 'main']
+            ]
+        ]);
+        $trace = new Trace($this->connection->reveal(), '1', 'myproject');
+    }
+
+    public function testSpecifyingSpansSkipsTraceGetCall()
+    {
+        $trace = new Trace($this->connection->reveal(), '1', 'myproject', [['name' => 'main']]);
+        $trace->info();
     }
 }

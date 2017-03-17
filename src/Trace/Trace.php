@@ -17,7 +17,9 @@
 
 namespace Google\Cloud\Trace;
 
+use Google\Cloud\Core\Exception\NotFoundException;
 use Google\Cloud\Core\ValidateTrait;
+use Google\Cloud\Trace\Connection\ConnectionInterface;
 
 /**
  * This plain PHP class represents a Trace resource. Traces belong to a
@@ -27,6 +29,11 @@ use Google\Cloud\Core\ValidateTrait;
 class Trace
 {
     use ValidateTrait;
+
+    /**
+     * @var ConnectionInterface Represents a connection to Stackdriver Trace.
+     */
+    private $connection;
 
     /**
      * The id of the project this trace belongs to.
@@ -49,29 +56,23 @@ class Trace
     /**
      * Instantiate a new Trace instance.
      *
+     * @param ConnectionInterface $connection The connection to Stackdriver Trace.
      * @param string $projectId The id of the project this trace belongs to.
-     * @param array $options [optional] {
-     *      Configuration options.
-     *
-     *      @type string $traceId The trace id for this trace. 128-bit numeric
-     *            formatted as a 32-byte hex string. If not provided, one will be generated
-     *            automatically for you.
-     *      @type array $spans List of span data to load.
+     * @param string $traceId [optional] The id of the trace. If not provided, one will be generated
+     *        automatically for you.
+     * @param array $spans [optional] Array of TraceSpan constructor arguments. See
+     *        {@see Google\Cloud\Trace\TraceSpan::__construct()} for configuration details.
      * }
      */
-    public function __construct($projectId, array $options = [])
+    public function __construct(ConnectionInterface $connection, $projectId, $traceId = null, $spans = null)
     {
+        $this->connection = $connection;
         $this->projectId = $projectId;
-
-        if (array_key_exists('traceId', $options)) {
-            $this->traceId = $options['traceId'];
-        }
-        $this->traceId = $this->traceId ?: $this->generateTraceId();
-
-        if (array_key_exists('spans', $options)) {
-            foreach ($options['spans'] as $span) {
-                array_push($this->spans, new TraceSpan($span));
-            }
+        $this->traceId = $traceId ?: $this->generateTraceId();
+        if ($spans) {
+            $this->spans = array_map(function ($span) {
+                return new TraceSpan($span);
+            }, $spans);
         }
     }
 
@@ -97,6 +98,7 @@ class Trace
 
     /**
      * Set the trace's projectId
+     *
      * @param string $projectId
      */
     public function setProjectId($projectId)
@@ -105,12 +107,17 @@ class Trace
     }
 
     /**
-     * Returns a serializable array representing this trace.
+     * Returns a serializable array representing this trace. If no span data
+     * is cached, a network request will be made to retrieve it.
      *
      * @return array
      */
     public function info()
     {
+        if (!$this->spans) {
+            $this->reload();
+        }
+
         return [
             'projectId' => $this->projectId,
             'traceId' => $this->traceId,
@@ -121,13 +128,46 @@ class Trace
     }
 
     /**
+     * Triggers a network request to load a span's details.
+     *
+     * @see https://cloud.google.com/trace/docs/reference/v1/rest/v1/projects.traces/get
+     */
+    public function reload()
+    {
+        $trace = $this->connection->getTrace([
+            'projectId' => $this->projectId,
+            'traceId' => $this->traceId
+        ]);
+
+        if (empty($trace)) {
+            throw new NotFoundException('Trace ID does not exist', 404);
+        }
+
+        $this->spans = array_map(function ($span) {
+            return new TraceSpan($span);
+        }, $trace['spans']);
+    }
+
+    /**
      * Retrieves the spans for this trace.
      *
-     * @return array
+     * @return TraceSpan[]
      */
     public function spans()
     {
         return $this->spans;
+    }
+
+    /**
+     * Create an instance of {@see Google\Cloud\Trace\TraceSpan}
+     *
+     * @param array $options [optional] See {@see Google\Cloud\Trace\TraceSpan::__construct()}
+     *      for configuration details.
+     * @return TraceSpan
+     */
+    public function span(array $options = [])
+    {
+        return new TraceSpan($options);
     }
 
     /**

@@ -42,21 +42,25 @@ class BasicTest extends \PHPUnit_Framework_TestCase
         $span2 = new TraceSpan(['name' => 'inner', 'parentSpanId' => $span->spanId()]);
         $span2->setStart();
 
-        usleep(20000);
+        // just add a little bit of time for the spans
+        usleep(20);
+
         $span2->setFinish();
         $span->setFinish();
 
         $trace->setSpans([$span, $span2]);
 
         // create the trace
-        $this->assertTrue($this->traceClient->insertTrace($trace));
+        $this->assertTrue($this->traceClient->insert($trace));
 
         // find the created trace (need to retry b/c eventual consistency)
+        $fetchedTrace = $this->traceClient->trace($trace->traceId());
         $backoff = new ExponentialBackoff(5);
-        $fetchedTrace = $backoff->execute([$this->traceClient, 'getTrace'], [$trace->traceId()]);
+        $info = $backoff->execute([$fetchedTrace, 'info']);
 
         $this->assertInstanceOf(Trace::class, $fetchedTrace);
         $this->assertEquals($trace->traceId(), $fetchedTrace->traceId());
+        $this->assertEquals(2, count($fetchedTrace->spans()));
     }
 
     /**
@@ -65,7 +69,8 @@ class BasicTest extends \PHPUnit_Framework_TestCase
     public function testFindNonExistentTrace()
     {
         // should not exist (it's possible, but unlikely)
-        $this->traceClient->getTrace('00000000000000000000000000000000');
+        $trace = $this->traceClient->trace('00000000000000000000000000000000');
+        $trace->info();
     }
 
     /**
@@ -73,7 +78,8 @@ class BasicTest extends \PHPUnit_Framework_TestCase
      */
     public function testFindInvalidRequest()
     {
-        $this->traceClient->getTrace('invalidid');
+        $trace = $this->traceClient->trace('invalidid');
+        $trace->info();
     }
 
     /**
