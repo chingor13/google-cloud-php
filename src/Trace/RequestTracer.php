@@ -17,6 +17,7 @@
 
 namespace Google\Cloud\Trace;
 
+use Google\Cloud\Trace\TraceClient;
 use Google\Cloud\Trace\Sampler\AlwaysOffSampler;
 use Google\Cloud\Trace\Sampler\AlwaysOnSampler;
 use Google\Cloud\Trace\Sampler\QpsSampler;
@@ -94,25 +95,37 @@ class RequestTracer
      * @param  ReporterInterface $reporter How to report traces at the end of the request
      * @param  array             $options  [description]
      */
-    public static function start(ReporterInterface $reporter, array $options)
+    public static function start(TraceClient $client, ReporterInterface $reporter, array $options)
     {
         $sampler = static::samplerFactory($options);
         $headers = static::fetchHeaders($options);
         $context = static::contextFromHeaders($headers);
 
-        $projectId = array_key_exists('projectId', $options)
-            ? $options['projectId']
-            : null;
-
         $tracer = $sampler->shouldSample()
-            ? new ContextTracer($projectId)
+            ? new ContextTracer($client)
             : new NullTracer();
 
         $tracer->startSpan($options + $context + [
             'name' => self::DEFAULT_MAIN_SPAN_NAME
         ]);
 
-        register_shutdown_function(array(static::class, 'report'), $reporter, $tracer);
+        register_shutdown_function(function () use ($reporter, $tracer) {
+            $responseCode = http_response_code();
+
+            // If a redirect, add the HTTP_REDIRECTED_URL label to the main span
+            if ($responseCode == 301 || $responseCode == 302) {
+                foreach (headers_list() as $header) {
+                    if (substr($header, 0, 9) == "Location:") {
+                        $tracer->addLabel(self::HTTP_REDIRECTED_URL, substr($header, 10));
+                        break;
+                    }
+                }
+            }
+
+            $tracer->addLabel(self::HTTP_STATUS_CODE, $responseCode);
+            $tracer->finishSpan();
+            $reporter->report($tracer);
+        });
 
         self::$tracer = $tracer;
     }
@@ -171,6 +184,7 @@ class RequestTracer
      */
     public static function report(TraceReporterInterface $reporter, TracerInterface $tracer)
     {
+        var_dump("here");
         $responseCode = http_response_code();
 
         // If a redirect, add the HTTP_REDIRECTED_URL label to the main span

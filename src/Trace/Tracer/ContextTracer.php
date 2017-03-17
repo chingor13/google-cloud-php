@@ -18,6 +18,7 @@
 namespace Google\Cloud\Trace\Tracer;
 
 use Google\Cloud\Trace\Trace;
+use Google\Cloud\Trace\TraceClient;
 use Google\Cloud\Trace\TraceSpan;
 
 /**
@@ -49,9 +50,9 @@ class ContextTracer implements TracerInterface
      *
      * @param string $projectId
      */
-    public function __construct($projectId)
+    public function __construct(TraceClient $traceClient)
     {
-        $this->trace = new Trace($projectId);
+        $this->trace = $traceClient->trace();
     }
 
     /**
