@@ -17,6 +17,7 @@
 
 namespace Google\Cloud\Trace\Tracer;
 
+use Google\Cloud\Core\ArrayTrait;
 use Google\Cloud\Trace\Trace;
 use Google\Cloud\Trace\TraceClient;
 use Google\Cloud\Trace\TraceSpan;
@@ -28,6 +29,8 @@ use Google\Cloud\Trace\TraceSpan;
  */
 class ContextTracer implements TracerInterface
 {
+    use ArrayTrait;
+
     /**
      * @var Trace
      */
@@ -85,11 +88,16 @@ class ContextTracer implements TracerInterface
                 ? $this->context()->spanId()
                 : null;
         }
+        $time = $this->pluck('startTime', $spanOptions, false);
+        if ($time) {
+            $micro = sprintf("%06d",($time - floor($time)) * 1000000);
+            $time = new \DateTime(date('Y-m-d H:i:s.'. $micro, $time));
+        }
 
         $span = new TraceSpan($spanOptions);
         array_push($this->spans, $span);
         array_unshift($this->stack, $span);
-        $span->setStart();
+        $span->setStart($time);
         return $span;
     }
 

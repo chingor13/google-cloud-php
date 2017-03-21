@@ -50,11 +50,12 @@ class TraceReporter implements ReporterInterface
      */
     public function report(TracerInterface $tracer)
     {
-        $trace = $tracer->trace();
-        try {
-            return $this->client->insert($trace);
-        } catch (ServiceException $e) {
-            return false;
+        if ($trace = $tracer->trace()) {
+            try {
+                return $this->client->insert($trace);
+            } catch (ServiceException $e) {
+                return false;
+            }
         }
     }
 }

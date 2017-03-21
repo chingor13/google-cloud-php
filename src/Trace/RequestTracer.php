@@ -17,11 +17,10 @@
 
 namespace Google\Cloud\Trace;
 
+use Google\Cloud\Core\ArrayTrait;
+
 use Google\Cloud\Trace\TraceClient;
-use Google\Cloud\Trace\Sampler\AlwaysOffSampler;
-use Google\Cloud\Trace\Sampler\AlwaysOnSampler;
-use Google\Cloud\Trace\Sampler\QpsSampler;
-use Google\Cloud\Trace\Sampler\RandomSampler;
+use Google\Cloud\Trace\Sampler\SamplerFactory;
 use Google\Cloud\Trace\Tracer\ContextTracer;
 use Google\Cloud\Trace\Tracer\NullTracer;
 use Google\Cloud\Trace\Tracer\TracerInterface;
@@ -84,9 +83,14 @@ class RequestTracer
     const GAE_REQUEST_LOG_ID = 'g.co/gae/request_log_id';
 
     /**
-     * @var TracerInterface
+     * @var RequestTracer Singleton instance
      */
-    private static $tracer;
+    private static $instance;
+
+    public static function __callStatic($name, $arguments)
+    {
+        return call_user_func_array([self::$instance, '_' . $name], $arguments);
+    }
 
     /**
      * Start a new trace session for this request. You should call this as early as
@@ -97,37 +101,50 @@ class RequestTracer
      */
     public static function start(TraceClient $client, ReporterInterface $reporter, array $options)
     {
-        $sampler = static::samplerFactory($options);
-        $headers = static::fetchHeaders($options);
-        $context = static::contextFromHeaders($headers);
+        self::$instance = new static($client, $reporter, $options);
+    }
 
-        $tracer = $sampler->shouldSample()
+    private $reporter;
+    private $tracer;
+
+    protected function __construct(TraceClient $client, ReporterInterface $reporter, array $options)
+    {
+        $this->reporter = $reporter;
+        $sampler = SamplerFactory::build($options);
+        $headers = $this->fetchHeaders($options);
+        $context = $this->contextFromHeaders($headers);
+
+        $shouldSample = (array_key_exists('enabled', $context) && $context['enabled'])
+            || $sampler->shouldSample();
+
+        $this->tracer = $shouldSample
             ? new ContextTracer($client)
             : new NullTracer();
 
-        $tracer->startSpan($options + $context + [
+        $this->tracer->startSpan($options + $context + [
             'name' => self::DEFAULT_MAIN_SPAN_NAME
         ]);
 
-        register_shutdown_function(function () use ($reporter, $tracer) {
-            $responseCode = http_response_code();
+        register_shutdown_function([$this, 'onExit']);
+    }
 
-            // If a redirect, add the HTTP_REDIRECTED_URL label to the main span
-            if ($responseCode == 301 || $responseCode == 302) {
-                foreach (headers_list() as $header) {
-                    if (substr($header, 0, 9) == "Location:") {
-                        $tracer->addLabel(self::HTTP_REDIRECTED_URL, substr($header, 10));
-                        break;
-                    }
+    public function onExit()
+    {
+        $responseCode = http_response_code();
+
+        // If a redirect, add the HTTP_REDIRECTED_URL label to the main span
+        if ($responseCode == 301 || $responseCode == 302) {
+            foreach (headers_list() as $header) {
+                if (substr($header, 0, 9) == "Location:") {
+                    $this->tracer->addLabel(self::HTTP_REDIRECTED_URL, substr($header, 10));
+                    break;
                 }
             }
+        }
 
-            $tracer->addLabel(self::HTTP_STATUS_CODE, $responseCode);
-            $tracer->finishSpan();
-            $reporter->report($tracer);
-        });
-
-        self::$tracer = $tracer;
+        $this->tracer->addLabel(self::HTTP_STATUS_CODE, $responseCode);
+        $this->tracer->finishSpan();
+        $this->reporter->report($this->tracer);
     }
 
     /**
@@ -139,9 +156,9 @@ class RequestTracer
      * @param  callable $callable    The callable to instrument.
      * @return mixed Returns whatever the callable returns
      */
-    public static function instrument(array $spanOptions, callable $callable)
+    public function _instrument(array $spanOptions, callable $callable)
     {
-        return self::$tracer->instrument($spanOptions, $callable);
+        return $this->tracer->instrument($spanOptions, $callable);
     }
 
     /**
@@ -151,9 +168,15 @@ class RequestTracer
      * @param  [type] $spanOptions [description]
      * @return TraceSpan
      */
-    public static function startSpan($spanOptions)
+    public function _startSpan($spanOptions)
     {
-        return self::$tracer->startSpan($spanOptions);
+        return $this->tracer->startSpan($spanOptions);
+    }
+
+    public function _retroSpan($seconds, $spanOptions)
+    {
+        $this->_startSpan($spanOptions + ['startTime' => microtime(true) - $seconds]);
+        $this->_finishSpan();
     }
 
     /**
@@ -161,9 +184,9 @@ class RequestTracer
      *
      * @return TraceSpan
      */
-    public static function finishSpan()
+    public function _finishSpan()
     {
-        return self::$tracer->finishSpan();
+        return $this->tracer->finishSpan();
     }
 
     /**
@@ -171,38 +194,12 @@ class RequestTracer
      *
      * @return TraceSpan
      */
-    public static function context()
+    public function _context()
     {
-        return self::$tracer->context();
+        return $this->tracer->context();
     }
 
-    /**
-     * Clean up and report the provided TracerInterface using the provided TraceReporterInterface
-     *
-     * @param  TraceReporterInterface $reporter The trace reporter to use
-     * @param  TracerInterface $tracer The tracer to report.
-     */
-    public static function report(TraceReporterInterface $reporter, TracerInterface $tracer)
-    {
-        var_dump("here");
-        $responseCode = http_response_code();
-
-        // If a redirect, add the HTTP_REDIRECTED_URL label to the main span
-        if ($responseCode == 301 || $responseCode == 302) {
-            foreach (headers_list() as $header) {
-                if (substr($header, 0, 9) == "Location:") {
-                    $tracer->addLabel(self::HTTP_REDIRECTED_URL, substr($header, 10));
-                    break;
-                }
-            }
-        }
-
-        $tracer->addLabel(self::HTTP_STATUS_CODE, $responseCode);
-        $tracer->finishSpan();
-        $reporter->report($tracer);
-    }
-
-    private static function fetchHeaders($options)
+    private function fetchHeaders($options)
     {
         if (array_key_exists('headers', $options)) {
             return $options['headers'];
@@ -211,7 +208,7 @@ class RequestTracer
         }
     }
 
-    private static function contextFromHeaders($headers)
+    private function contextFromHeaders($headers)
     {
         $context = [];
         if (array_key_exists(self::HTTP_HEADER, $headers) &&
@@ -229,7 +226,7 @@ class RequestTracer
         return $context;
     }
 
-    private static function labelsFromHeaders($headers)
+    private function labelsFromHeaders($headers)
     {
         $labels = [];
 
@@ -249,18 +246,5 @@ class RequestTracer
         $labels[self::PID] = "" . getmypid();
 
         return $labels;
-    }
-
-    private static function samplerFactory($options)
-    {
-        if (array_key_exists('qps', $options)) {
-            return new QpsSampler($options['qps']);
-        } elseif (array_key_exists('random', $options)) {
-            return new RandomSampler($options['random']);
-        } elseif (array_key_exists('enabled', $options) && $options) {
-            return new AlwaysOnSampler();
-        } else {
-            return new AlwaysOffSampler();
-        }
     }
 }
