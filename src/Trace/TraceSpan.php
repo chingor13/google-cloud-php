@@ -37,8 +37,7 @@ class TraceSpan
     const SPAN_KIND_RPC_CLIENT = 'RPC_CLIENT';
 
     /**
-     * Associative array containing all the fields representing this TraceSpan.
-     * @var array
+     * @var array Associative array containing all the fields representing this TraceSpan.
      */
     private $info;
 
@@ -85,7 +84,7 @@ class TraceSpan
     /**
      * Set the start time for this span.
      *
-     * @param  \DateTime $when [optional] The start time of this span.
+     * @param  \DateTimeInterface $when [optional] The start time of this span.
      *         **Defaults to** now.
      */
     public function setStart(\DateTimeInterface $when = null)
@@ -96,7 +95,7 @@ class TraceSpan
     /**
      * Set the end time for this span.
      *
-     * @param  \DateTime $when [optional] The end time of this span.
+     * @param  \DateTimeInterface $when [optional] The end time of this span.
      *         **Defaults to** now.
      */
     public function setFinish(\DateTimeInterface $when = null)
@@ -164,7 +163,7 @@ class TraceSpan
      * Returns a "Zulu" formatted string representing the
      * provided \DateTime.
      *
-     * @param  \DateTime $when [optional] The end time of this span.
+     * @param  \DateTimeInterface $when [optional] The end time of this span.
      *         **Defaults to** now.
      * @return string
      */
@@ -175,6 +174,7 @@ class TraceSpan
             $micro = sprintf("%06d", $usec * 1000000);
             $when = new \DateTime(date('Y-m-d H:i:s.' . $micro));
         }
+        $when->setTimezone(new \DateTimeZone('UTC'));
         return $when->format('Y-m-d\TH:i:s.u000\Z');
     }
 
@@ -197,8 +197,17 @@ class TraceSpan
      */
     private function generateSpanName()
     {
-        // FIXME: clean backtrace rather than guessing the stack depth
-        $caller = debug_backtrace(0, 5)[4];
-        return sprintf('app/%s/%s/%d', $caller['class'], $caller['function'], $caller['line']);
+        // Try to find the first stacktrace class entry that doesn't start with Google\Cloud\Trace
+        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) as $bt) {
+            $bt += ['line' => null];
+            if (!array_key_exists('class', $bt)) {
+                return implode('/', array_filter(['app', basename($bt['file']), $bt['function'], $bt['line']]));
+            } elseif (substr($bt['class'], 0, 18) != 'Google\Cloud\Trace') {
+                return implode('/', array_filter(['app', $bt['class'], $bt['function'], $bt['line']]));
+            }
+        }
+
+        // We couldn't find a suitable backtrace entry - generate a random one
+        return uniqid('span');
     }
 }

@@ -19,9 +19,7 @@ namespace Google\Cloud\Trace\Connection;
 
 use Google\Cloud\Core\RequestBuilder;
 use Google\Cloud\Core\RequestWrapper;
-use Google\Cloud\Core\EmulatorTrait;
 use Google\Cloud\Core\RestTrait;
-use Google\Cloud\Core\UriTrait;
 
 /**
  * Implementation of the
@@ -29,9 +27,7 @@ use Google\Cloud\Core\UriTrait;
  */
 class Rest implements ConnectionInterface
 {
-    use EmulatorTrait;
     use RestTrait;
-    use UriTrait;
 
     const BASE_URI = 'https://cloudtrace.googleapis.com/';
 
@@ -40,14 +36,6 @@ class Rest implements ConnectionInterface
      */
     public function __construct(array $config = [])
     {
-        $emulatorHost = getenv('TRACE_EMULATOR_HOST');
-
-        $baseUri = $this->getEmulatorBaseUri(self::BASE_URI, $emulatorHost);
-
-        if ($emulatorHost) {
-            $config['shouldSignRequest'] = false;
-        }
-
         $config += [
             'serviceDefinitionPath' => __DIR__ . '/ServiceDefinition/trace-v1.json'
         ];
@@ -55,7 +43,7 @@ class Rest implements ConnectionInterface
         $this->setRequestWrapper(new RequestWrapper($config));
         $this->setRequestBuilder(new RequestBuilder(
             $config['serviceDefinitionPath'],
-            $baseUri
+            self::BASE_URI
         ));
     }
 

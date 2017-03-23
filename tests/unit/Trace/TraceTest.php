@@ -50,7 +50,6 @@ class TraceTest extends \PHPUnit_Framework_TestCase
                 ]
             ]
         );
-        $this->assertEquals('myproject', $trace->projectId());
         $this->assertEquals('1234abcd', $trace->traceId());
         $this->assertEquals(1, count($trace->spans()));
         foreach($trace->spans() as $span) {
@@ -80,13 +79,14 @@ class TraceTest extends \PHPUnit_Framework_TestCase
             'spans' => [
                 ['name' => 'main']
             ]
-        ]);
-        $trace = new Trace($this->connection->reveal(), '1', 'myproject');
+        ])->shouldBeCalled();
+        $trace = new Trace($this->connection->reveal(), 'myproject', '1');
+        $trace->info();
     }
 
     public function testSpecifyingSpansSkipsTraceGetCall()
     {
-        $trace = new Trace($this->connection->reveal(), '1', 'myproject', [['name' => 'main']]);
+        $trace = new Trace($this->connection->reveal(), 'myproject', '1', [['name' => 'main']]);
         $trace->info();
     }
 }

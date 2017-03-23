@@ -21,12 +21,11 @@ use Google\Cloud\Core\ArrayTrait;
 use Google\Cloud\Core\ClientTrait;
 use Google\Cloud\Core\Iterator\ItemIterator;
 use Google\Cloud\Core\Iterator\PageIterator;
-use Google\Cloud\Core\Exception\ServiceException;
 use Google\Cloud\Trace\Connection\ConnectionInterface;
 use Google\Cloud\Trace\Connection\Rest;
 
 /**
- * Google Stackdriver Trace client. Allows you to collect latency data from
+ * Google Stackdriver Trace allows you to collect latency data from
  * your applications and display it in the Google Cloud Platform Console.
  * Find more information at [Stackdriver Trace API docs](https://cloud.google.com/trace/docs/).
  *
@@ -88,27 +87,31 @@ class TraceClient
     /**
      * Sends a Trace log in a simple fashion.
      *
-     * @see https://cloud.google.com/trace/docs/reference/v1/rest/v1/projects/patchTraces
+     * @codingStandardsIgnoreStart
+     * @see https://cloud.google.com/trace/docs/reference/v1/rest/v1/projects/patchTraces Project patchTraces API documentation.
+     * @codingStandardsIgnoreEnd
      *
-     * @param  Trace $trace The trace log to send.
+     * @param Trace $trace The trace log to send.
+     * @param array $options [optional] Configuration Options
      * @return bool
-     * @throws ServiceException
      */
-    public function insert(Trace $trace)
+    public function insert(Trace $trace, array $options = [])
     {
-        return $this->insertBatch([$trace]);
+        return $this->insertBatch([$trace], $options);
     }
 
     /**
      * Sends multiple Trace logs in a simple fashion.
      *
-     * @see https://cloud.google.com/trace/docs/reference/v1/rest/v1/projects/patchTraces
+     * @codingStandardsIgnoreStart
+     * @see https://cloud.google.com/trace/docs/reference/v1/rest/v1/projects/patchTraces Project patchTraces API documentation.
+     * @codingStandardsIgnoreEnd
      *
      * @param Trace[] $traces The trace logs to send.
+     * @param array $options [optional] Configuration Options
      * @return bool
-     * @throws ServiceException
      */
-    public function insertBatch(array $traces)
+    public function insertBatch(array $traces, array $options = [])
     {
         // throws ServiceException on failure
         $this->connection->patchTraces([
@@ -116,16 +119,17 @@ class TraceClient
             'traces' => array_map(function ($trace) {
                 return $trace->info();
             }, $traces)
-        ]);
+        ] + $options);
         return true;
     }
 
     /**
      * Lazily find or instantiates a trace. There are no network requests made at this
      * point. To see the operations that can be performed on a trace please
-     * see {@see Google\Cloud\Trace\Trace}.
+     * see {@see Google\Cloud\Trace\Trace}. If no traceId is provided, one will be
+     * generated for you.
 
-     * @param  string $traceId [optional] The trace id of the trace to reference.
+     * @param string $traceId [optional] The trace id of the trace to reference.
      * @return Trace
      */
     public function trace($traceId = null)
@@ -136,7 +140,7 @@ class TraceClient
     /**
      * Fetch all traces in the project
      *
-     * @see https://cloud.google.com/trace/docs/reference/v1/rest/v1/projects.traces/list Trace list API documentation.
+     * @see https://cloud.google.com/trace/docs/reference/v1/rest/v1/projects.traces/list Traces list API documentation.
      *
      * @param array $options [optional] {
      *      Configuration options.
@@ -144,7 +148,9 @@ class TraceClient
      *      @type string $viewType Type of data returned for traces in the list.
      *            Can be one of 'VIEW_TYPE_UNSPECIFIED', 'MINIMAL', 'ROOTSPAN', or
      *            'COMPLETE'
-     *      @type int $pageSize Maximum number of traces to return
+     *      @type int $pageSize Maximum number of traces to return per page.
+     *      @type int $resultLimit Limit the number of results returned in total.
+     *           **Defaults to** `0` (return all results).
      *      @type string $pageToken Token identifying the page of results to return
      *      @type string $startTime Start of the time interval during which trace data
      *            was collected. This timestamp in nanoseconds should be in "Zulu" format.
@@ -162,6 +168,8 @@ class TraceClient
      */
     public function traces(array $options = [])
     {
+        $resultLimit = $this->pluck('resultLimit', $options, false);
+
         return new ItemIterator(
             new PageIterator(
                 function (array $trace) {
@@ -169,8 +177,11 @@ class TraceClient
                     return new Trace($this->connection, $trace['projectId'], $trace['traceId'], $trace['spans']);
                 },
                 [$this->connection, 'listTraces'],
-                $options + ['projectId' => $this->projectId],
-                ['itemsKey' => 'traces']
+                ['projectId' => $this->projectId] + $options,
+                [
+                    'itemsKey' => 'traces',
+                    'resultLimit' => $resultLimit
+                ]
             )
         );
     }
