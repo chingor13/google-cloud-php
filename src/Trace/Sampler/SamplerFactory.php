@@ -17,12 +17,26 @@
 
 namespace Google\Cloud\Trace\Sampler;
 
+/**
+ * The SamplerFactory builds SamplerInterface instances given a variety of
+ * configuration options.
+ */
 class SamplerFactory
 {
-    public static function build(array $options)
+    /**
+     * Builds a sampler given the provided configuration options.
+     *
+     * @param  array  $options [optional]
+     * @return SamplerInterface
+     */
+    public static function build(array $options = [])
     {
         if (array_key_exists('qps', $options)) {
-            return new QpsSampler($options['qps']);
+            $qps = $options['qps'] + [
+                'rate' => null,
+                'key' => null
+            ];
+            return new QpsSampler($qps['cache'], $qps['rate'], $qps['key']);
         } elseif (array_key_exists('random', $options)) {
             return new RandomSampler($options['random']);
         } elseif (array_key_exists('enabled', $options) && $options) {

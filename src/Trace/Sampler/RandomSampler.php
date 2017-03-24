@@ -24,8 +24,7 @@ namespace Google\Cloud\Trace\Sampler;
 class RandomSampler implements SamplerInterface
 {
     /**
-     * The percentage of requests to sample represented as a float between 0 and 1.
-     * @var float
+     * @var float The percentage of requests to sample represented as a float between 0 and 1.
      */
     private $percentage;
 
@@ -36,6 +35,10 @@ class RandomSampler implements SamplerInterface
      */
     public function __construct(float $percentage)
     {
+        if ($percentage > 1 || $percentage < 0) {
+            throw new \InvalidArgumentException('Percentage must be between 0 and 1');
+        }
+
         $this->percentage = $percentage;
     }
 

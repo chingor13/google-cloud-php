@@ -17,39 +17,74 @@
 
 namespace Google\Cloud\Trace\Sampler;
 
+use Google\Auth\Cache\Item;
+use Psr\Cache\CacheItemPoolInterface;
+
 /**
  * This implementation of the SamplerInterface uses a cache to limit sampling to
  * the a certain number of queries per second.
  */
 class QpsSampler implements SamplerInterface
 {
-    const SAMPLER_CONFIG_CACHE_KEY = '__google_cloud_trace__';
+    const DEFAULT_CACHE_KEY = '__google_cloud_trace__';
+    const DEFAULT_QPS_RATE = 0.1;
 
     /**
-     * The QPS rate.
-     * @var float
+     * @var CacheItemPoolInterface The cache store used for storing the last
+     */
+    private $cache;
+
+    /**
+     * @var float The QPS rate.
      */
     private $rate;
 
-    private $cache;
-
-    public function __construct($options)
+    /**
+     * Create a new QpsSampler. If the provided cache is shared between servers,
+     * the queries per second will be counted across servers. If the cache is shared
+     * between servers and you wish to sample independently on the servers, provide
+     * your own cache key that is different on each server.
+     *
+     * There may be race conditions between simultaneous requests where they may
+     * both (all) be sampled.
+     *
+     * @param CacheItemPoolInterface $cache The cache store to use
+     * @param $rate [optional] The number of queries per second to allow. Must be less than 1.
+     *        **Defaults to** `0.1`
+     * @param $key [optional] The
+     */
+    public function __construct(CacheItemPoolInterface $cache, $rate = null, $key = null)
     {
-        $this->rate = $options['rate'];
-        $this->cache = $options['cache'];
+        $this->cache = $cache;
+        $this->rate = $rate ?: self::DEFAULT_QPS_RATE;
+        $this->key = $key ?: self::DEFAULT_CACHE_KEY;
+
+        if ($this->rate > 1) {
+            throw new \InvalidArgumentException('QPS sampling rate must be less that 1 query per second');
+        }
     }
 
+    /**
+     * Returns whether or not the request should be sampled.
+     *
+     * @return bool
+     */
     public function shouldSample()
     {
-        if ($this->cache()->get(self::SAMPLER_CONFIG_CACHE_KEY)) {
+        if ($this->cache->hasItem($this->key)) {
             return false;
         }
-        $this->cache()->set(self::SAMPLER_CONFIG_CACHE_KEY, '', $this->nextExpiry());
+
+        $item = new Item($this->key);
+        $item->set(true);
+        $item->expiresAfter($this->nextExpiry());
+        $this->cache->save($item);
+
         return true;
     }
 
     private function nextExpiry()
     {
-        return 1.0 / $this->rate();
+        return (int) 1.0 / $this->rate();
     }
 }
