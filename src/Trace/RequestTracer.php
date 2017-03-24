@@ -248,7 +248,7 @@ class RequestTracer
             }
         }
         $labels[self::PID] = '' . getmypid();
-        $labels[self::AGENT] = 'google-cloud-php'
+        $labels[self::AGENT] = 'google-cloud-php';
 
         return $labels;
     }
