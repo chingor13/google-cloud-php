@@ -235,15 +235,20 @@ class RequestTracer
             self::HTTP_METHOD => ['REQUEST_METHOD'],
             self::HTTP_CLIENT_PROTOCOL => ['SERVER_PROTOCOL'],
             self::HTTP_USER_AGENT => ['HTTP_USER_AGENT'],
-            self::HTTP_HOST => ['HTTP_HOST', 'SERVER_NAME']
+            self::HTTP_HOST => ['HTTP_HOST', 'SERVER_NAME'],
+            self::GAE_APP_MODULE => 'GAE_SERVICE',
+            self::GAE_APP_VERSION => 'GAE_VERSION'
         ];
         foreach ($labelMap as $labelKey => $headerKeys) {
             $val = array_reduce($headerKeys, function ($carry, $headerKey) use ($headers) {
                 return $carry ?: (array_key_exists($headerKey, $headers) ? $headers[$headerKey] : null);
             });
-            $labels[$labelKey] = $val;
+            if ($val) {
+                $labels[$labelKey] = $val;
+            }
         }
-        $labels[self::PID] = "" . getmypid();
+        $labels[self::PID] = '' . getmypid();
+        $labels[self::AGENT] = 'google-cloud-php'
 
         return $labels;
     }
