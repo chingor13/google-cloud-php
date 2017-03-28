@@ -28,6 +28,7 @@ class QpsSampler implements SamplerInterface
 {
     const DEFAULT_CACHE_KEY = '__google_cloud_trace__';
     const DEFAULT_QPS_RATE = 0.1;
+    const DEFAULT_CACHE_ITEM_CLASS = Item::class;
 
     /**
      * @var CacheItemPoolInterface The cache store used for storing the last
@@ -40,6 +41,11 @@ class QpsSampler implements SamplerInterface
     private $rate;
 
     /**
+     * @var string The class name of the cache item interface to use
+     */
+    private $cacheItemClass;
+
+    /**
      * Create a new QpsSampler. If the provided cache is shared between servers,
      * the queries per second will be counted across servers. If the cache is shared
      * between servers and you wish to sample independently on the servers, provide
@@ -49,13 +55,15 @@ class QpsSampler implements SamplerInterface
      * both (all) be sampled.
      *
      * @param CacheItemPoolInterface $cache The cache store to use
-     * @param $rate [optional] The number of queries per second to allow. Must be less than 1.
+     * @param string $cacheItemClass The class of the item to use.
+     * @param float $rate [optional] The number of queries per second to allow. Must be less than 1.
      *        **Defaults to** `0.1`
-     * @param $key [optional] The
+     * @param string $key [optional] The cache key to use. **Defaults to** `__google_cloud_trace__`
      */
-    public function __construct(CacheItemPoolInterface $cache, $rate = null, $key = null)
+    public function __construct(CacheItemPoolInterface $cache, $cacheItemClass = null, $rate = null, $key = null)
     {
         $this->cache = $cache;
+        $this->cacheItemClass = $cacheItemClass ?: self::DEFAULT_CACHE_ITEM_CLASS;
         $this->rate = $rate ?: self::DEFAULT_QPS_RATE;
         $this->key = $key ?: self::DEFAULT_CACHE_KEY;
 
@@ -71,13 +79,19 @@ class QpsSampler implements SamplerInterface
      */
     public function shouldSample()
     {
-        if ($this->cache->hasItem($this->key)) {
-            return false;
+        // We will store the microtime timestamp in the cache because some
+        // cache implementations will not let you use expiry for anything less
+        // than 1 minute
+        if ($item = $this->cache->getItem($this->key)) {
+            if ((float) $item->get() > microtime(true)) {
+                return false;
+            }
         }
 
-        $item = new Item($this->key);
-        $item->set(true);
-        $item->expiresAfter($this->nextExpiry());
+        $item = new $this->cacheItemClass($this->key);
+        $item->set(microtime(true) + $this->nextExpiry());
+
+        // TODO: what if the cache fails to save?
         $this->cache->save($item);
 
         return true;
@@ -85,6 +99,6 @@ class QpsSampler implements SamplerInterface
 
     private function nextExpiry()
     {
-        return (int) 1.0 / $this->rate();
+        return 1.0 / $this->rate;
     }
 }

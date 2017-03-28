@@ -33,10 +33,11 @@ class SamplerFactory
     {
         if (array_key_exists('qps', $options)) {
             $qps = $options['qps'] + [
+                'cacheItemClass' => null,
                 'rate' => null,
                 'key' => null
             ];
-            return new QpsSampler($qps['cache'], $qps['rate'], $qps['key']);
+            return new QpsSampler($qps['cache'], $qps['cacheItemClass'], $qps['rate'], $qps['key']);
         } elseif (array_key_exists('random', $options)) {
             return new RandomSampler($options['random']);
         } elseif (array_key_exists('enabled', $options) && $options) {
