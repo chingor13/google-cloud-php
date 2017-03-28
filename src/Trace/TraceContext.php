@@ -17,6 +17,20 @@
 
 namespace Google\Cloud\Trace;
 
+/**
+ * TraceContext encapsulates your current context within your request's trace. It includes
+ * 3 fields: the `traceId`, the current `spanId`, and an `enabled` flag which indicates whether
+ * or not the request is being traced.
+ *
+ * Example:
+ *
+ * ```
+ * use Google\Cloud\Trace\RequestTracer;
+ *
+ * $context = RequestTracer::context();
+ * echo $context; // output the header format for using the current context in a remote call
+ * ```
+ */
 class TraceContext
 {
     use IdGeneratorTrait;
@@ -24,10 +38,27 @@ class TraceContext
     const HTTP_HEADER = 'HTTP_X_CLOUD_TRACE_CONTEXT';
     const CONTEXT_HEADER_FORMAT = '/([0-9a-f]{32})(?:\/(\d+))?(?:;o=(\d+))?/';
 
+    /**
+     * @var string The current traceId.
+     */
     private $traceId;
+
+    /**
+     * @var string The current spanId. This is the deepest nested span currently open.
+     */
     private $spanId;
+
+    /**
+     * @var bool Whether or not tracing is enabled for this request.
+     */
     private $enabled;
 
+    /**
+     * Parses a headers array (normally the $_SERVER variable) and builds a TraceContext objects
+     *
+     * @param  array $headers The headers array (normally the $_SERVER variable)
+     * @return TraceContext
+     */
     public static function fromHeaders($headers)
     {
         if (array_key_exists(self::HTTP_HEADER, $headers) &&
@@ -41,6 +72,13 @@ class TraceContext
         return new static();
     }
 
+    /**
+     * Creates a new TraceContext instance
+     *
+     * @param string $traceId The current traceId. If not set, one will be generated for you.
+     * @param string $spanId The current spanId
+     * @param bool $enabled Whether or not tracing is enabled on this request **Defaults to** `null`.
+     */
     public function __construct($traceId = null, $spanId = null, $enabled = null)
     {
         $this->traceId = $traceId ?: $this->generateTraceId();
@@ -48,36 +86,72 @@ class TraceContext
         $this->enabled = $enabled;
     }
 
+    /**
+     * Fetch the current traceId.
+     *
+     * @return string
+     */
     public function traceId()
     {
         return $this->traceId;
     }
 
+    /**
+     * Set the current traceId.
+     *
+     * @param string $traceId The traceId to set.
+     */
     public function setTraceId($traceId)
     {
         $this->traceId = $traceId;
     }
 
+    /**
+     * Fetch the current spanId.
+     *
+     * @return string
+     */
     public function spanId()
     {
         return $this->spanId;
     }
 
+    /**
+     * Set the current spanId.
+     *
+     * @param string $spanId The spanId to set.
+     */
     public function setSpanId($spanId)
     {
         $this->spanId = $spanId;
     }
 
+    /**
+     * Whether or not the request is being traced.
+     *
+     * @return bool
+     */
     public function enabled()
     {
         return $this->enabled;
     }
 
+    /**
+     * Set whether or not the request is being traced.
+     *
+     * @param bool $enabled
+     */
     public function setEnabled($enabled)
     {
         $this->enabled = $enabled;
     }
 
+    /**
+     * Returns a string form of the TraceContext. This is the format of the Trace Context Header
+     * and should be forwarded to downstream requests as the X-Cloud-Trace-Context header.
+     *
+     * @return string
+     */
     public function __toString()
     {
         $ret = '' . $this->traceId;

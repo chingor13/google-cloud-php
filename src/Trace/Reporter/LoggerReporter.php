@@ -39,6 +39,7 @@ class LoggerReporter implements ReporterInterface
      * Create a new LoggerReporter
      *
      * @param LoggerInterface $logger The logger to write to.
+     * @param string $level The logger level to write as.
      */
     public function __construct($logger, $level = null)
     {

@@ -76,19 +76,13 @@ class ContextTracer implements TracerInterface
      */
     public function startSpan(array $spanOptions)
     {
-        if (!array_key_exists('parentSpanId', $spanOptions)) {
-            $spanOptions['parentSpanId'] = $this->context()->spanId();
-        }
-        $time = $this->pluck('startTime', $spanOptions, false);
-        if ($time) {
-            $micro = sprintf("%06d",($time - floor($time)) * 1000000);
-            $time = new \DateTime(date('Y-m-d H:i:s.'. $micro, $time));
-        }
+        $spanOptions += [
+            'parentSpanId' => $this->context()->spanId()
+        ];
 
         $span = new TraceSpan($spanOptions);
         array_push($this->spans, $span);
         array_unshift($this->stack, $span);
-        $span->setStart($time);
         $this->context->setSpanId($span->spanId());
         return $span;
     }

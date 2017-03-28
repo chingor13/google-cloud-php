@@ -180,10 +180,17 @@ class RequestTracer
         return $this->tracer->startSpan($spanOptions);
     }
 
+    /**
+     * Creates a span that started $seconds ago and ends now.
+     *
+     * @param  int|float $seconds Number of seconds ago this span started
+     * @param  array $spanOptions [description]
+     * @return TraceSpan
+     */
     public function _retroSpan($seconds, $spanOptions)
     {
         $this->_startSpan($spanOptions + ['startTime' => microtime(true) - $seconds]);
-        $this->_finishSpan();
+        return $this->_finishSpan();
     }
 
     /**
