@@ -17,8 +17,6 @@
 
 namespace Google\Cloud\Trace;
 
-use Google\Cloud\Core\ArrayTrait;
-
 use Google\Cloud\Trace\TraceClient;
 use Google\Cloud\Trace\Sampler\SamplerFactory;
 use Google\Cloud\Trace\Tracer\ContextTracer;
@@ -85,6 +83,23 @@ class RequestTracer
      */
     private static $instance;
 
+    /**
+     * @var ReporterInterface The reported to use at the end of the request
+     */
+    private $reporter;
+
+    /**
+     * @var TracerInterface The tracer to use for this request
+     */
+    private $tracer;
+
+    /**
+     * Forward static calls on `RequestTracer` to the singleton instance.
+     *
+     * @param string $name Method name
+     * @param array $arguments
+     * @return mixed
+     */
     public static function __callStatic($name, $arguments)
     {
         return call_user_func_array([self::$instance, '_' . $name], $arguments);
@@ -95,34 +110,55 @@ class RequestTracer
      * possible for the most accurate results.
      *
      * @param  ReporterInterface $reporter How to report traces at the end of the request
-     * @param  array             $options  [description]
+     * @param array $options [optional] {
+     *      Configuration options.
+     *
+     *      @type array $qps
+     *      @type bool $enabled Whether to force sampling on/off for all requests
+     *      @type numeric $random Whether to use random sampling for each request. Must be between 0 and 1.
+     *      @type array $headers Optionally use this array as headers instead of $_SERVER.
+     * }
+     * @param  array $rootSpanOptions Options for the root span.
+     *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
      * @return RequestTracer
      */
-    public static function start(ReporterInterface $reporter, array $options)
+    public static function start(ReporterInterface $reporter, array $options = [], array $rootSpanOptions = [])
     {
-        self::$instance = new static($reporter, $options);
+        self::$instance = new static($reporter, $options, $rootSpanOptions);
         return self::$instance;
     }
 
-    private $reporter;
-    private $tracer;
-
-    protected function __construct(ReporterInterface $reporter, array $options)
+    /**
+     * Create a new RequestTracer and start tracing this request.
+     *
+     * @param ReporterInterface $reporter How to report the trace at the end of the request
+     * @param array $options [optional] {
+     *      Configuration options.
+     *
+     *      @type array $qps Query per second options.
+     *      @type bool $enabled Whether to force sampling on/off for all requests
+     *      @type numeric $random Whether to use random sampling for each request. Must be between 0 and 1.
+     *      @type array $headers Optionally use this array as headers instead of $_SERVER.
+     * }
+     * @param array $rootSpanOptions [optional] Options for the root span.
+     *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
+     */
+    protected function __construct(ReporterInterface $reporter, array $options = [], array $rootSpanOptions = [])
     {
         $this->reporter = $reporter;
-        $sampler = SamplerFactory::build($options);
         $headers = $this->fetchHeaders($options);
-
         $context = TraceContext::fromHeaders($headers);
 
+        // If the context force disables tracing, don't consult the $sampler.
         if ($context->enabled() !== false) {
+            $sampler = SamplerFactory::build($options);
             $context->setEnabled($context->enabled() || $sampler->shouldSample());
         }
         $this->tracer = $context->enabled()
             ? new ContextTracer($context)
             : new NullTracer();
 
-        $this->tracer->startSpan($options + [
+        $this->tracer->startSpan($rootSpanOptions + [
             'name' => $this->nameFromHeaders($headers),
             'labels' => $this->labelsFromHeaders($headers)
         ]);
@@ -130,6 +166,10 @@ class RequestTracer
         register_shutdown_function([$this, 'onExit']);
     }
 
+    /**
+     * The function registered as the shutdown function. Cleans up the trace and reports using the
+     * provided ReporterInterface. Adds additional labels to the root span detected from the response.
+     */
     public function onExit()
     {
         $responseCode = http_response_code();
@@ -149,6 +189,11 @@ class RequestTracer
         $this->reporter->report($this->tracer);
     }
 
+    /**
+     * Return the tracer used for this request.
+     *
+     * @return TracerInterface
+     */
     public function tracer()
     {
         return $this->tracer;
@@ -159,7 +204,8 @@ class RequestTracer
      * If an exception is thrown while executing the callable, the exception will be caught,
      * the span will be closed, and the exception will be re-thrown.
      *
-     * @param  array    $spanOptions [description]
+     * @param array $spanOptions [optional] Options for the span.
+     *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
      * @param  callable $callable    The callable to instrument.
      * @return mixed Returns whatever the callable returns
      */
@@ -172,7 +218,8 @@ class RequestTracer
      * Explicitly start a new TraceSpan. You will need to manage finishing the TraceSpan,
      * including handling any thrown exceptions.
      *
-     * @param  [type] $spanOptions [description]
+     * @param array $spanOptions [optional] Options for the span.
+     *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
      * @return TraceSpan
      */
     public function _startSpan($spanOptions)
@@ -183,8 +230,9 @@ class RequestTracer
     /**
      * Creates a span that started $seconds ago and ends now.
      *
-     * @param  int|float $seconds Number of seconds ago this span started
-     * @param  array $spanOptions [description]
+     * @param int|float $seconds Number of seconds ago this span started
+     * @param array $spanOptions [optional] Options for the span.
+     *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
      * @return TraceSpan
      */
     public function _retroSpan($seconds, $spanOptions)
