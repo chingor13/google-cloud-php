@@ -52,7 +52,7 @@ class TraceReporter implements ReporterInterface
     {
         $spans = $tracer->spans();
         if (!empty($spans)) {
-            $trace = $this->client->trace();
+            $trace = $this->client->trace($tracer->context()->traceId());
             $trace->setSpans($spans);
             try {
                 return $this->client->insert($trace);

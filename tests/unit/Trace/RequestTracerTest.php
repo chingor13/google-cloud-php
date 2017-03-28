@@ -40,7 +40,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
         $rt = RequestTracer::start($this->reporter->reveal(), ['enabled' => false]);
         $tracer = $rt->tracer();
 
-        $this->assertFalse($rt->enabled());
+        $this->assertFalse($tracer->enabled());
         $this->assertInstanceOf(NullTracer::class, $tracer);
     }
 
@@ -49,7 +49,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
         $rt = RequestTracer::start($this->reporter->reveal(), ['enabled' => true]);
         $tracer = $rt->tracer();
 
-        $this->assertTrue($rt->enabled());
+        $this->assertTrue($tracer->enabled());
         $this->assertInstanceOf(ContextTracer::class, $tracer);
     }
 
@@ -60,7 +60,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
         ]]);
         $tracer = $rt->tracer();
 
-        $this->assertTrue($rt->enabled());
+        $this->assertTrue($tracer->enabled());
         $this->assertInstanceOf(ContextTracer::class, $tracer);
     }
 
@@ -71,7 +71,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
         ]]);
         $tracer = $rt->tracer();
 
-        $this->assertFalse($rt->enabled());
+        $this->assertFalse($tracer->enabled());
         $this->assertInstanceOf(NullTracer::class, $tracer);
     }
 

@@ -33,9 +33,7 @@ use Google\Cloud\Trace\TraceSpan;
  */
 class RequestTracer
 {
-    const HTTP_HEADER = 'HTTP_X_CLOUD_TRACE_CONTEXT';
-    const CONTEXT_HEADER_FORMAT = '/([0-9a-f]{32})(?:\/(\d+))?(?:;o=(\d+))?/';
-    const DEFAULT_MAIN_SPAN_NAME = 'main';
+    const DEFAULT_ROOT_SPAN_NAME = 'main';
 
     const AGENT = '/agent';
     const COMPONENT = '/component';
@@ -108,25 +106,25 @@ class RequestTracer
 
     private $reporter;
     private $tracer;
-    private $enabled;
 
     protected function __construct(ReporterInterface $reporter, array $options)
     {
         $this->reporter = $reporter;
         $sampler = SamplerFactory::build($options);
         $headers = $this->fetchHeaders($options);
-        $context = $this->contextFromHeaders($headers);
 
-        $this->enabled = array_key_exists('enabled', $context)
-            ? $context['enabled']
-            : $sampler->shouldSample();
+        $context = TraceContext::fromHeaders($headers);
 
-        $this->tracer = $this->enabled()
-            ? new ContextTracer()
+        if ($context->enabled() !== false) {
+            $context->setEnabled($context->enabled() || $sampler->shouldSample());
+        }
+        $this->tracer = $context->enabled()
+            ? new ContextTracer($context)
             : new NullTracer();
 
-        $this->tracer->startSpan($options + $context + [
-            'name' => self::DEFAULT_MAIN_SPAN_NAME
+        $this->tracer->startSpan($options + [
+            'name' => $this->nameFromHeaders($headers),
+            'labels' => $this->labelsFromHeaders($headers)
         ]);
 
         register_shutdown_function([$this, 'onExit']);
@@ -149,11 +147,6 @@ class RequestTracer
         $this->tracer->addLabel(self::HTTP_STATUS_CODE, $responseCode);
         $this->tracer->finishSpan();
         $this->reporter->report($this->tracer);
-    }
-
-    public function enabled()
-    {
-        return $this->enabled;
     }
 
     public function tracer()
@@ -206,7 +199,7 @@ class RequestTracer
     /**
      * Return the current context (TraceSpan)
      *
-     * @return TraceSpan
+     * @return TraceContext
      */
     public function _context()
     {
@@ -222,22 +215,12 @@ class RequestTracer
         }
     }
 
-    private function contextFromHeaders($headers)
+    private function nameFromHeaders($headers)
     {
-        $context = [];
-        if (array_key_exists(self::HTTP_HEADER, $headers) &&
-            preg_match(self::CONTEXT_HEADER_FORMAT, $headers[self::HTTP_HEADER], $matches)) {
-            $context += array(
-                'traceId' => $matches[1],
-                'parentSpanId' => $matches[2],
-                'enabled' => array_key_exists(3, $matches) ? $matches[3] == '1' : true
-            );
-        }
         if (array_key_exists('REQUEST_URI', $headers)) {
-            $context['name'] = $headers['REQUEST_URI'];
+            return $headers['REQUEST_URI'];
         }
-        $context['labels'] = self::labelsFromHeaders($headers);
-        return $context;
+        return self::DEFAULT_ROOT_SPAN_NAME;
     }
 
     private function labelsFromHeaders($headers)

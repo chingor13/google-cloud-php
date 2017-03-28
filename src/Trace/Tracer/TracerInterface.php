@@ -17,6 +17,7 @@
 
 namespace Google\Cloud\Trace\Tracer;
 
+use Google\Cloud\Trace\TraceContext;
 use Google\Cloud\Trace\TraceSpan;
 
 /**
@@ -53,7 +54,7 @@ interface TracerInterface
     /**
      * Return the current context.
      *
-     * @return TraceSpan
+     * @return TraceContext
      */
     public function context();
 
@@ -71,4 +72,11 @@ interface TracerInterface
      * @param string $value
      */
     public function addLabel($label, $value);
+
+    /**
+     * Whether or not this tracer is enabled.
+     *
+     * @return bool
+     */
+    public function enabled();
 }

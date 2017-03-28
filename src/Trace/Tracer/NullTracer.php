@@ -87,4 +87,14 @@ class NullTracer implements TracerInterface
     public function addLabel($label, $value)
     {
     }
+
+    /**
+     * Whether or not this tracer is enabled.
+     *
+     * @return bool
+     */
+    public function enabled()
+    {
+        return false;
+    }
 }
