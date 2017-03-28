@@ -22,7 +22,7 @@ use Psr\Cache\CacheItemPoolInterface;
 
 /**
  * This implementation of the SamplerInterface uses a cache to limit sampling to
- * the a certain number of queries per second.
+ * the a certain number of queries per second. It requires a PSR-6 cache implementation.
  */
 class QpsSampler implements SamplerInterface
 {
@@ -55,8 +55,8 @@ class QpsSampler implements SamplerInterface
      * both (all) be sampled.
      *
      * @param CacheItemPoolInterface $cache The cache store to use
-     * @param string $cacheItemClass The class of the item to use.
-     * @param float $rate [optional] The number of queries per second to allow. Must be less than 1.
+     * @param string $cacheItemClass The class of the item to use. This class must implement CacheItemInterface.
+     * @param float $rate [optional] The number of queries per second to allow. Must be less than or equal to 1.
      *        **Defaults to** `0.1`
      * @param string $key [optional] The cache key to use. **Defaults to** `__google_cloud_trace__`
      */
@@ -64,10 +64,10 @@ class QpsSampler implements SamplerInterface
     {
         $this->cache = $cache;
         $this->cacheItemClass = $cacheItemClass ?: self::DEFAULT_CACHE_ITEM_CLASS;
-        $this->rate = $rate ?: self::DEFAULT_QPS_RATE;
+        $this->rate = is_null($rate) ? self::DEFAULT_QPS_RATE : $rate;
         $this->key = $key ?: self::DEFAULT_CACHE_KEY;
 
-        if ($this->rate > 1) {
+        if ($this->rate > 1 || $this->rate <= 0) {
             throw new \InvalidArgumentException('QPS sampling rate must be less that 1 query per second');
         }
     }

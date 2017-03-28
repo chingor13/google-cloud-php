@@ -17,7 +17,6 @@
 
 namespace Google\Cloud\Trace\Tracer;
 
-use Google\Cloud\Trace\Trace;
 use Google\Cloud\Trace\TraceSpan;
 
 /**
@@ -59,11 +58,11 @@ interface TracerInterface
     public function context();
 
     /**
-     * Return the current trace.
+     * Return the spans collected.
      *
-     * @return Trace
+     * @return TraceSpan[]
      */
-    public function trace();
+    public function spans();
 
     /**
      * Add a label to the primary TraceSpan

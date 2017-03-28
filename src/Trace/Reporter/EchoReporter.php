@@ -33,7 +33,7 @@ class EchoReporter implements ReporterInterface
      */
     public function report(TracerInterface $tracer)
     {
-        print_r($tracer->trace()->info());
+        print_r($tracer->spans());
         return true;
     }
 }

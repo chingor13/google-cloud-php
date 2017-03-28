@@ -50,7 +50,10 @@ class TraceReporter implements ReporterInterface
      */
     public function report(TracerInterface $tracer)
     {
-        if ($trace = $tracer->trace()) {
+        $spans = $tracer->spans();
+        if (!empty($spans)) {
+            $trace = $this->client->trace();
+            $trace->setSpans($spans);
             try {
                 return $this->client->insert($trace);
             } catch (ServiceException $e) {

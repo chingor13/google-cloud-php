@@ -18,7 +18,6 @@
 namespace Google\Cloud\Trace\Tracer;
 
 use Google\Cloud\Core\ArrayTrait;
-use Google\Cloud\Trace\Trace;
 use Google\Cloud\Trace\TraceClient;
 use Google\Cloud\Trace\TraceSpan;
 
@@ -32,11 +31,6 @@ class ContextTracer implements TracerInterface
     use ArrayTrait;
 
     /**
-     * @var Trace
-     */
-    private $trace;
-
-    /**
      * List of Spans to report
      * @var TraceSpan[]
      */
@@ -47,16 +41,6 @@ class ContextTracer implements TracerInterface
      * @var TraceSpan[]
      */
     private $stack = [];
-
-    /**
-     * Create a new trace context.
-     *
-     * @param string $projectId
-     */
-    public function __construct(TraceClient $traceClient)
-    {
-        $this->trace = $traceClient->trace();
-    }
 
     /**
      * Instrument a callable by creating a Span that manages the startTime and endTime.
@@ -126,14 +110,13 @@ class ContextTracer implements TracerInterface
     }
 
     /**
-     * Return the constructed Trace
+     * Return the spans collected.
      *
-     * @return Trace
+     * @return TraceSpan[]
      */
-    public function trace()
+    public function spans()
     {
-        $this->trace->setSpans($this->spans);
-        return $this->trace;
+        return $this->spans;
     }
 
     /**

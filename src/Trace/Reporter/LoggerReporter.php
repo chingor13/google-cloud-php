@@ -54,7 +54,7 @@ class LoggerReporter implements ReporterInterface
      */
     public function report(TracerInterface $tracer)
     {
-        $this->logger->log($this->level, json_encode($tracer->trace()->info()));
+        $this->logger->log($this->level, json_encode($tracer->spans()));
         return true;
     }
 }

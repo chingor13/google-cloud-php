@@ -17,7 +17,6 @@
 
 namespace Google\Cloud\Trace\Tracer;
 
-use Google\Cloud\Trace\Trace;
 use Google\Cloud\Trace\TraceSpan;
 
 /**
@@ -70,13 +69,13 @@ class NullTracer implements TracerInterface
     }
 
     /**
-     * Return the constructed Trace
+     * Return the spans collected.
      *
-     * @return Trace
+     * @return TraceSpan[]
      */
-    public function trace()
+    public function spans()
     {
-        return null;
+        return [];
     }
 
     /**

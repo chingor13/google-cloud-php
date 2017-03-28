@@ -49,7 +49,7 @@ class FileReporter implements ReporterInterface
     public function report(TracerInterface $tracer)
     {
         $fp = fopen($this->filename, 'a');
-        fwrite($fp, json_encode($tracer->trace()->info()));
+        fwrite($fp, json_encode($tracer->spans()));
         fclose($fp);
         return true;
     }

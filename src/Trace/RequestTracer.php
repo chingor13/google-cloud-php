@@ -98,27 +98,31 @@ class RequestTracer
      *
      * @param  ReporterInterface $reporter How to report traces at the end of the request
      * @param  array             $options  [description]
+     * @return RequestTracer
      */
-    public static function start(TraceClient $client, ReporterInterface $reporter, array $options)
+    public static function start(ReporterInterface $reporter, array $options)
     {
-        self::$instance = new static($client, $reporter, $options);
+        self::$instance = new static($reporter, $options);
+        return self::$instance;
     }
 
     private $reporter;
     private $tracer;
+    private $enabled;
 
-    protected function __construct(TraceClient $client, ReporterInterface $reporter, array $options)
+    protected function __construct(ReporterInterface $reporter, array $options)
     {
         $this->reporter = $reporter;
         $sampler = SamplerFactory::build($options);
         $headers = $this->fetchHeaders($options);
         $context = $this->contextFromHeaders($headers);
 
-        $shouldSample = (array_key_exists('enabled', $context) && $context['enabled'])
-            || $sampler->shouldSample();
+        $this->enabled = array_key_exists('enabled', $context)
+            ? $context['enabled']
+            : $sampler->shouldSample();
 
-        $this->tracer = $shouldSample
-            ? new ContextTracer($client)
+        $this->tracer = $this->enabled()
+            ? new ContextTracer()
             : new NullTracer();
 
         $this->tracer->startSpan($options + $context + [
@@ -145,6 +149,16 @@ class RequestTracer
         $this->tracer->addLabel(self::HTTP_STATUS_CODE, $responseCode);
         $this->tracer->finishSpan();
         $this->reporter->report($this->tracer);
+    }
+
+    public function enabled()
+    {
+        return $this->enabled;
+    }
+
+    public function tracer()
+    {
+        return $this->tracer;
     }
 
     /**

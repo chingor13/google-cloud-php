@@ -40,7 +40,7 @@ class SamplerFactory
             return new QpsSampler($qps['cache'], $qps['cacheItemClass'], $qps['rate'], $qps['key']);
         } elseif (array_key_exists('random', $options)) {
             return new RandomSampler($options['random']);
-        } elseif (array_key_exists('enabled', $options) && $options) {
+        } elseif (array_key_exists('enabled', $options) && $options['enabled']) {
             return new AlwaysOnSampler();
         } else {
             return new AlwaysOffSampler();
