@@ -26,8 +26,36 @@ use Google\Cloud\Trace\Reporter\ReporterInterface;
 use Google\Cloud\Trace\TraceSpan;
 
 /**
- * This class provides static fuctions to give you access to the current
- * request's singleton tracer.
+ * This class provides static functions to give you access to the current
+ * request's singleton tracer. You should use this class to instrument your code.
+ * *
+ * Example:
+ * ```
+ * use Google\Cloud\ServiceBuilder();
+ * $builder = new ServiceBuilder();
+ * $reporter = new TraceReporter($builder->trace());
+ * RequestTracer::start($reporter, ['random' => 0.1]);
+ *
+ * RequestTracer::instrument(['name' => 'outer'], function () {
+ *   // some code
+ *   RequestTracer::instrument(['name' => 'inner'], function () {
+ *     // some code
+ *   });
+ *   // some code
+ * });
+ * ```
+ *
+ * The above code creates 1 Trace with 3 nested TraceSpan instances - the root span, the 'outer' span,
+ * and the 'inner' span. You can also start and finish spans independently throughout your code.
+ *
+ * ```
+ * RequestTracer::startSpan(['name' => 'expensive-operation']);
+ * // do expensive operation
+ * RequestTracer::finishSpan();
+ * ```
+ *
+ * It is recommended that you use the `instrument` method where you can. An uncaught exception between a
+ * `startSpan` and `finishSpan` may not correctly close spans.
  */
 class RequestTracer
 {
@@ -185,7 +213,11 @@ class RequestTracer
         }
 
         $this->tracer->addLabel(self::HTTP_STATUS_CODE, $responseCode);
-        $this->tracer->finishSpan();
+
+        // close all open spans
+        do {
+            $span = $this->tracer->finishSpan();
+        } while ($span);
         $this->reporter->report($this->tracer);
     }
 
