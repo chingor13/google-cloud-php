@@ -44,7 +44,7 @@ class ReporterFactory
             case 'async':
                 return new AsyncReporter();
             case 'sync':
-                return new TraceReporter($options['client']);
+                return new SyncReporter($options['client']);
             case 'logger':
                 return new LoggerReporter(
                     $options['logger'],

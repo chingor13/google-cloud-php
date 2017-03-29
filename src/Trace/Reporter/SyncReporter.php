@@ -25,7 +25,7 @@ use Google\Cloud\Trace\Tracer\TracerInterface;
  * This implementation of the TraceReporterInterface uses a provided TraceClient to
  * report Traces and their TraceSpans to Stackdriver directly.
  */
-class TraceReporter implements ReporterInterface
+class SyncReporter implements ReporterInterface
 {
     /**
      * @var TraceClient
