@@ -77,7 +77,8 @@ class ContextTracer implements TracerInterface
     public function startSpan(array $spanOptions)
     {
         $spanOptions += [
-            'parentSpanId' => $this->context()->spanId()
+            'parentSpanId' => $this->context()->spanId(),
+            'startTime' => microtime(true)
         ];
 
         $span = new TraceSpan($spanOptions);

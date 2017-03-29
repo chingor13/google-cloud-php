@@ -15,51 +15,46 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Trace\Sampler;
+namespace Google\Cloud\Trace\Reporter;
 
 /**
- * The SamplerFactory builds SamplerInterface instances given a variety of
+ * The ReporterFactory builds ReporterInterface instances given a variety of
  * configuration options.
  */
-class SamplerFactory
+class ReporterFactory
 {
     /**
      * Builds a sampler given the provided configuration options.
      *
-     * @param array|SamplerInterface $options
-     * @return SamplerInterface
+     * @param array|ReporterInterface $options
+     * @return ReporterInterface
      */
     public static function build($options)
     {
-        if (is_a($options, SamplerInterface::class)) {
+        if (is_a($options, ReporterInterface::class)) {
             return $options;
         }
 
         $options += [
-            'type' => 'qps',
-            'rate' => 0.1
+            'type' => 'null',
+            'level' => null
         ];
 
         switch($options['type']) {
-            case 'qps':
-                $options += [
-                    'cache' => null,
-                    'cacheItemClass' => null,
-                    'cacheKey' => null
-                ];
-                return new QpsSampler(
-                    $options['cache'],
-                    $options['cacheItemClass'],
-                    $options['rate'],
-                    $options['cacheKey']
+            case 'async':
+                return new AsyncReporter();
+            case 'sync':
+                return new TraceReporter($options['client']);
+            case 'logger':
+                return new LoggerReporter(
+                    $options['logger'],
+                    $options['level']
                 );
-            case 'random':
-                return new RandomSampler($options['rate']);
-            case 'enabled':
-                return new AlwaysOnSampler();
-            case 'disabled':
+            case 'file':
+                return new FileReporter($options['file']);
+            case 'null':
             default:
-                return new AlwaysOffSampler();
+                return new NullReporter();
         }
     }
 }

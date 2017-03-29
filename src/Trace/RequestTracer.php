@@ -17,25 +17,67 @@
 
 namespace Google\Cloud\Trace;
 
-use Google\Cloud\Trace\TraceClient;
+use Google\Cloud\Core\ArrayTrait;
+use Google\Cloud\Trace\Reporter\ReporterFactory;
+use Google\Cloud\Trace\Reporter\ReporterInterface;
 use Google\Cloud\Trace\Sampler\SamplerFactory;
+use Google\Cloud\Trace\Sampler\SamplerInterface;
+use Google\Cloud\Trace\TraceClient;
+use Google\Cloud\Trace\TraceSpan;
 use Google\Cloud\Trace\Tracer\ContextTracer;
 use Google\Cloud\Trace\Tracer\NullTracer;
 use Google\Cloud\Trace\Tracer\TracerInterface;
-use Google\Cloud\Trace\Reporter\ReporterInterface;
-use Google\Cloud\Trace\TraceSpan;
 
 /**
  * This class provides static functions to give you access to the current
  * request's singleton tracer. You should use this class to instrument your code.
- * *
+ * The first step, is to configure and start your `RequestTracer`.
+ *
  * Example:
  * ```
- * use Google\Cloud\ServiceBuilder();
+ * use Google\Cloud\ServiceBuilder;
+ * use Google\Cloud\Trace\Reporter\TraceReporter;
+ *
  * $builder = new ServiceBuilder();
  * $reporter = new TraceReporter($builder->trace());
- * RequestTracer::start($reporter, ['random' => 0.1]);
+ * RequestTracer::start([
+ *   'reporter' => $reporter
+ * ]);
+ * ```
  *
+ * Not every request is traced. By default, we will use query-per-second sampling at
+ * 0.1 requests/second. You can change the sampler logic by providing a `SamplerInterface`
+ * or providing sampler configuration options which are passed to the `SamplerBuilder`.
+ *
+ * Example using concretion:
+ * ```
+ * use Google\Cloud\Trace\Sampler\RandomSampler;
+ *
+ * $sampler = new RandomSampler(0.01);
+ * RequestTracer::start([
+ *   'sampler' => $sampler
+ * ]);
+ * ```
+ *
+ * Example using configuration:
+ * ```
+ * $cache = new Cache(); // a PSR-6 cache implementation
+ * RequestTracer::start([
+ *   'sampler' => [
+ *     'type' => 'qps',
+ *     'rate' => '0.2',
+ *     'cache' => $cache
+ *   ]
+ * ]);
+ * ```
+ *
+ * To instrument code, you can use static functions on the `RequestTracer`. To create a `TraceSpan`
+ * for a callable, use the `RequestTracer::instrument` function. The following code creates 1 Trace
+ * with 3 nested TraceSpan instances - the root span, the 'outer' span, and the 'inner' span.
+ *
+ * Example:
+ * ```
+ * RequestTracer::start();
  * RequestTracer::instrument(['name' => 'outer'], function () {
  *   // some code
  *   RequestTracer::instrument(['name' => 'inner'], function () {
@@ -45,9 +87,9 @@ use Google\Cloud\Trace\TraceSpan;
  * });
  * ```
  *
- * The above code creates 1 Trace with 3 nested TraceSpan instances - the root span, the 'outer' span,
- * and the 'inner' span. You can also start and finish spans independently throughout your code.
+ * You can also start and finish spans independently throughout your code.
  *
+ * Example:
  * ```
  * RequestTracer::startSpan(['name' => 'expensive-operation']);
  * // do expensive operation
@@ -59,6 +101,8 @@ use Google\Cloud\Trace\TraceSpan;
  */
 class RequestTracer
 {
+    use ArrayTrait;
+
     const DEFAULT_ROOT_SPAN_NAME = 'main';
 
     const AGENT = '/agent';
@@ -137,56 +181,53 @@ class RequestTracer
      * Start a new trace session for this request. You should call this as early as
      * possible for the most accurate results.
      *
-     * @param  ReporterInterface $reporter How to report traces at the end of the request
-     * @param array $options [optional] {
-     *      Configuration options.
+     * @param array $options {
+     *      Configuration options. See
+     *      {@see Google\Cloud\Trace\TraceSpan::__construct()} for the other available options.
      *
-     *      @type array $qps
-     *      @type bool $enabled Whether to force sampling on/off for all requests
-     *      @type numeric $random Whether to use random sampling for each request. Must be between 0 and 1.
-     *      @type array $headers Optionally use this array as headers instead of $_SERVER.
+     *      @type ReporterInterface|array $reporter
+     *      @type SamplerInterface|array $sampler
+     *      @type array $headers
      * }
-     * @param  array $rootSpanOptions Options for the root span.
-     *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
      * @return RequestTracer
      */
-    public static function start(ReporterInterface $reporter, array $options = [], array $rootSpanOptions = [])
+    public static function start(array $options = [])
     {
-        self::$instance = new static($reporter, $options, $rootSpanOptions);
-        return self::$instance;
+        $reporterOptions = self::pluck('reporter', $options, false) ?: [];
+        $reporter = ReporterFactory::build($reporterOptions);
+        $samplerOptions = self::pluck('sampler', $options, false) ?: [];
+        $sampler = SamplerFactory::build($samplerOptions);
+
+        return self::$instance = new static($reporter, $sampler, $options);
     }
 
     /**
      * Create a new RequestTracer and start tracing this request.
      *
      * @param ReporterInterface $reporter How to report the trace at the end of the request
+     * @param SamplerInterface $sampler Which sampler to use for sampling requests
      * @param array $options [optional] {
-     *      Configuration options.
+     *      Configuration options. See
+     *      {@see Google\Cloud\Trace\TraceSpan::__construct()} for the other available options.
      *
-     *      @type array $qps Query per second options.
-     *      @type bool $enabled Whether to force sampling on/off for all requests
-     *      @type numeric $random Whether to use random sampling for each request. Must be between 0 and 1.
-     *      @type array $headers Optionally use this array as headers instead of $_SERVER.
+     *      @type array $headers
      * }
-     * @param array $rootSpanOptions [optional] Options for the root span.
-     *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
      */
-    protected function __construct(ReporterInterface $reporter, array $options = [], array $rootSpanOptions = [])
+    public function __construct(ReporterInterface $reporter, SamplerInterface $sampler, array $options = [])
     {
         $this->reporter = $reporter;
-        $headers = $this->fetchHeaders($options);
+        $headers = $this->pluck('headers', $options, false) ?: $_SERVER;
         $context = TraceContext::fromHeaders($headers);
 
         // If the context force disables tracing, don't consult the $sampler.
         if ($context->enabled() !== false) {
-            $sampler = SamplerFactory::build($options);
             $context->setEnabled($context->enabled() || $sampler->shouldSample());
         }
         $this->tracer = $context->enabled()
             ? new ContextTracer($context)
             : new NullTracer();
 
-        $this->tracer->startSpan($rootSpanOptions + [
+        $this->tracer->startSpan($options + [
             'name' => $this->nameFromHeaders($headers),
             'labels' => $this->labelsFromHeaders($headers)
         ]);
@@ -291,15 +332,6 @@ class RequestTracer
     public function _context()
     {
         return $this->tracer->context();
-    }
-
-    private function fetchHeaders($options)
-    {
-        if (array_key_exists('headers', $options)) {
-            return $options['headers'];
-        } else {
-            return $_SERVER;
-        }
     }
 
     private function nameFromHeaders($headers)

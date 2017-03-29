@@ -18,6 +18,7 @@
 namespace Google\Cloud\Trace\Sampler;
 
 use Google\Auth\Cache\Item;
+use Google\Auth\Cache\MemoryCacheItemPool;
 use Psr\Cache\CacheItemPoolInterface;
 
 /**
@@ -60,9 +61,9 @@ class QpsSampler implements SamplerInterface
      *        **Defaults to** `0.1`
      * @param string $key [optional] The cache key to use. **Defaults to** `__google_cloud_trace__`
      */
-    public function __construct(CacheItemPoolInterface $cache, $cacheItemClass = null, $rate = null, $key = null)
+    public function __construct(CacheItemPoolInterface $cache = null, $cacheItemClass = null, $rate = null, $key = null)
     {
-        $this->cache = $cache;
+        $this->cache = $cache ?: $this->defaultCache();
         $this->cacheItemClass = $cacheItemClass ?: self::DEFAULT_CACHE_ITEM_CLASS;
         $this->rate = is_null($rate) ? self::DEFAULT_QPS_RATE : $rate;
         $this->key = $key ?: self::DEFAULT_CACHE_KEY;
@@ -100,5 +101,18 @@ class QpsSampler implements SamplerInterface
     private function nextExpiry()
     {
         return 1.0 / $this->rate;
+    }
+
+    private function defaultCache()
+    {
+        if (extension_loaded('memcached') && defined('\\Cache\\Adapter\\Memcached\\MemcachedCachePool')) {
+            $memcached = new \Memcached();
+            $memcached->addServer('localhost', 11211);
+            return new \Cache\Adapter\Memcached\MemcachedCachePool($memcached);
+        } elseif (extension_loaded('apcu') && defined('\\Cache\\Adapter\\Apcu\\ApcuCachePool')) {
+            return new \Cache\Adapter\Apcu\ApcuCachePool();
+        } else {
+            return new MemoryCacheItemPool();
+        }
     }
 }

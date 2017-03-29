@@ -37,7 +37,9 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testForceDisabled()
     {
-        $rt = RequestTracer::start($this->reporter->reveal(), ['enabled' => false]);
+        $rt = RequestTracer::start([
+            'sampler' => ['type' => 'disabled']
+        ]);
         $tracer = $rt->tracer();
 
         $this->assertFalse($tracer->enabled());
@@ -46,7 +48,9 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testForceEnabled()
     {
-        $rt = RequestTracer::start($this->reporter->reveal(), ['enabled' => true]);
+        $rt = RequestTracer::start([
+            'sampler' => ['type' => 'enabled']
+        ]);
         $tracer = $rt->tracer();
 
         $this->assertTrue($tracer->enabled());
@@ -55,9 +59,11 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testForceEnabledContextHeader()
     {
-        $rt = RequestTracer::start($this->reporter->reveal(), ['headers' => [
-            'HTTP_X_CLOUD_TRACE_CONTEXT' => '12345678901234567890123456789012;o=1'
-        ]]);
+        $rt = RequestTracer::start([
+            'headers' => [
+                'HTTP_X_CLOUD_TRACE_CONTEXT' => '12345678901234567890123456789012;o=1'
+            ]
+        ]);
         $tracer = $rt->tracer();
 
         $this->assertTrue($tracer->enabled());
@@ -66,9 +72,11 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testForceDisabledContextHeader()
     {
-        $rt = RequestTracer::start($this->reporter->reveal(), ['headers' => [
-            'HTTP_X_CLOUD_TRACE_CONTEXT' => '12345678901234567890123456789012;o=0'
-        ]]);
+        $rt = RequestTracer::start([
+            'headers' => [
+                'HTTP_X_CLOUD_TRACE_CONTEXT' => '12345678901234567890123456789012;o=0'
+            ]
+        ]);
         $tracer = $rt->tracer();
 
         $this->assertFalse($tracer->enabled());
@@ -77,7 +85,9 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testCanTrackContext()
     {
-        $rt = RequestTracer::start($this->reporter->reveal(), ['enabled' => true]);
+        $rt = RequestTracer::start([
+            'sampler' => ['type' => 'enabled']
+        ]);
         RequestTracer::instrument(['name' => 'inner'], function () {});
         $rt->onExit();
         $spans = $rt->tracer()->spans();
@@ -93,15 +103,18 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testCanParseLabels()
     {
-        $rt = RequestTracer::start($this->reporter->reveal(), ['enabled' => true, 'headers' => [
-            'REQUEST_URI' => '/some/uri',
-            'REQUEST_METHOD' => 'POST',
-            'SERVER_PROTOCOL' => 'HTTP/1.1',
-            'HTTP_USER_AGENT' => 'test agent 0.1',
-            'HTTP_HOST' => 'example.com:8080',
-            'GAE_SERVICE' => 'test app',
-            'GAE_VERSION' => 'some version'
-        ]]);
+        $rt = RequestTracer::start([
+            'sampler' => ['type' => 'enabled'],
+            'headers' => [
+                'REQUEST_URI' => '/some/uri',
+                'REQUEST_METHOD' => 'POST',
+                'SERVER_PROTOCOL' => 'HTTP/1.1',
+                'HTTP_USER_AGENT' => 'test agent 0.1',
+                'HTTP_HOST' => 'example.com:8080',
+                'GAE_SERVICE' => 'test app',
+                'GAE_VERSION' => 'some version'
+            ]
+        ]);
         $span = $rt->tracer()->spans()[0];
         $labels = $span->info()['labels'];
         $expectedLabels = [
@@ -125,10 +138,14 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testCanParseParentContext()
     {
-        $rt = RequestTracer::start($this->reporter->reveal(), ['headers' => [
-            'HTTP_X_CLOUD_TRACE_CONTEXT' => '12345678901234567890123456789012/0000;o=1'
-        ]]);
+        $rt = RequestTracer::start([
+            'headers' => [
+                'HTTP_X_CLOUD_TRACE_CONTEXT' => '12345678901234567890123456789012/0000;o=1'
+            ]
+        ]);
         $span = $rt->tracer()->spans()[0];
         $this->assertEquals('0000', $span->info()['parentSpanId']);
+        $context = RequestTracer::context();
+        $this->assertEquals('12345678901234567890123456789012', $context->traceId());
     }
 }
