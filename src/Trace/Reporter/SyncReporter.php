@@ -51,14 +51,16 @@ class SyncReporter implements ReporterInterface
     public function report(TracerInterface $tracer)
     {
         $spans = $tracer->spans();
-        if (!empty($spans)) {
-            $trace = $this->client->trace($tracer->context()->traceId());
-            $trace->setSpans($spans);
-            try {
-                return $this->client->insert($trace);
-            } catch (ServiceException $e) {
-                return false;
-            }
+        if (empty($spans)) {
+            return false;
+        }
+
+        $trace = $this->client->trace($tracer->context()->traceId());
+        $trace->setSpans($spans);
+        try {
+            return $this->client->insert($trace);
+        } catch (ServiceException $e) {
+            return false;
         }
     }
 }
