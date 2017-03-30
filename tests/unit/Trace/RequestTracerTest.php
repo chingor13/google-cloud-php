@@ -37,7 +37,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testForceDisabled()
     {
-        $rt = RequestTracer::start([
+        $rt = RequestTracer::start($this->reporter->reveal(), [
             'sampler' => ['type' => 'disabled']
         ]);
         $tracer = $rt->tracer();
@@ -48,7 +48,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testForceEnabled()
     {
-        $rt = RequestTracer::start([
+        $rt = RequestTracer::start($this->reporter->reveal(), [
             'sampler' => ['type' => 'enabled']
         ]);
         $tracer = $rt->tracer();
@@ -59,7 +59,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testForceEnabledContextHeader()
     {
-        $rt = RequestTracer::start([
+        $rt = RequestTracer::start($this->reporter->reveal(), [
             'headers' => [
                 'HTTP_X_CLOUD_TRACE_CONTEXT' => '12345678901234567890123456789012;o=1'
             ]
@@ -72,7 +72,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testForceDisabledContextHeader()
     {
-        $rt = RequestTracer::start([
+        $rt = RequestTracer::start($this->reporter->reveal(), [
             'headers' => [
                 'HTTP_X_CLOUD_TRACE_CONTEXT' => '12345678901234567890123456789012;o=0'
             ]
@@ -85,7 +85,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testCanTrackContext()
     {
-        $rt = RequestTracer::start([
+        $rt = RequestTracer::start($this->reporter->reveal(), [
             'sampler' => ['type' => 'enabled']
         ]);
         RequestTracer::instrument(['name' => 'inner'], function () {});
@@ -103,7 +103,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testCanParseLabels()
     {
-        $rt = RequestTracer::start([
+        $rt = RequestTracer::start($this->reporter->reveal(), [
             'sampler' => ['type' => 'enabled'],
             'headers' => [
                 'REQUEST_URI' => '/some/uri',
@@ -138,7 +138,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function testCanParseParentContext()
     {
-        $rt = RequestTracer::start([
+        $rt = RequestTracer::start($this->reporter->reveal(), [
             'headers' => [
                 'HTTP_X_CLOUD_TRACE_CONTEXT' => '12345678901234567890123456789012/0000;o=1'
             ]

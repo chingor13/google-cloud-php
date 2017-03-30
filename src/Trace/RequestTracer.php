@@ -181,20 +181,18 @@ class RequestTracer
      * Start a new trace session for this request. You should call this as early as
      * possible for the most accurate results.
      *
+     * @param ReporterInterface $reporter
      * @param array $options {
      *      Configuration options. See
      *      {@see Google\Cloud\Trace\TraceSpan::__construct()} for the other available options.
      *
-     *      @type ReporterInterface|array $reporter
      *      @type SamplerInterface|array $sampler
      *      @type array $headers
      * }
      * @return RequestTracer
      */
-    public static function start(array $options = [])
+    public static function start(ReporterInterface $reporter, array $options = [])
     {
-        $reporterOptions = self::pluck('reporter', $options, false) ?: [];
-        $reporter = ReporterFactory::build($reporterOptions);
         $samplerOptions = self::pluck('sampler', $options, false) ?: [];
         $sampler = SamplerFactory::build($samplerOptions);
 
@@ -228,6 +226,7 @@ class RequestTracer
             : new NullTracer();
 
         $this->tracer->startSpan($options + [
+            'startTime' => $this->startTimeFromHeaders($headers),
             'name' => $this->nameFromHeaders($headers),
             'labels' => $this->labelsFromHeaders($headers)
         ]);
@@ -334,7 +333,12 @@ class RequestTracer
         return $this->tracer->context();
     }
 
-    private function nameFromHeaders($headers)
+    private function startTimeFromHeaders(array $headers)
+    {
+        return $this->detectKey(['REQUEST_TIME_FLOAT', 'REQUEST_TIME'], $headers);
+    }
+
+    private function nameFromHeaders(array $headers)
     {
         if (array_key_exists('REQUEST_URI', $headers)) {
             return $headers['REQUEST_URI'];
@@ -342,7 +346,7 @@ class RequestTracer
         return self::DEFAULT_ROOT_SPAN_NAME;
     }
 
-    private function labelsFromHeaders($headers)
+    private function labelsFromHeaders(array $headers)
     {
         $labels = [];
 
@@ -356,10 +360,7 @@ class RequestTracer
             self::GAE_APP_VERSION => ['GAE_VERSION']
         ];
         foreach ($labelMap as $labelKey => $headerKeys) {
-            $val = array_reduce($headerKeys, function ($carry, $headerKey) use ($headers) {
-                return $carry ?: (array_key_exists($headerKey, $headers) ? $headers[$headerKey] : null);
-            });
-            if ($val) {
+            if ($val = $this->detectKey($headerKeys, $headers)) {
                 $labels[$labelKey] = $val;
             }
         }
@@ -367,5 +368,15 @@ class RequestTracer
         $labels[self::AGENT] = 'google-cloud-php';
 
         return $labels;
+    }
+
+    private function detectKey(array $keys, array $array)
+    {
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $array)) {
+                return $array[$key];
+            }
+        }
+        return null;
     }
 }

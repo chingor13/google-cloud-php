@@ -36,7 +36,7 @@ class SamplerFactory
         }
 
         $options += [
-            'type' => 'qps',
+            'type' => 'enabled',
             'rate' => 0.1
         ];
 

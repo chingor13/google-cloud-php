@@ -18,7 +18,6 @@
 namespace Google\Cloud\Trace\Sampler;
 
 use Google\Auth\Cache\Item;
-use Google\Auth\Cache\MemoryCacheItemPool;
 use Psr\Cache\CacheItemPoolInterface;
 
 /**
@@ -56,15 +55,19 @@ class QpsSampler implements SamplerInterface
      * both (all) be sampled.
      *
      * @param CacheItemPoolInterface $cache The cache store to use
-     * @param string $cacheItemClass The class of the item to use. This class must implement CacheItemInterface.
+     * @param string $cacheItemClass [optional] The class of the item to use. This class must implement CacheItemInterface.
      * @param float $rate [optional] The number of queries per second to allow. Must be less than or equal to 1.
      *        **Defaults to** `0.1`
      * @param string $key [optional] The cache key to use. **Defaults to** `__google_cloud_trace__`
      */
     public function __construct(CacheItemPoolInterface $cache = null, $cacheItemClass = null, $rate = null, $key = null)
     {
-        $this->cache = $cache ?: $this->defaultCache();
         $this->cacheItemClass = $cacheItemClass ?: self::DEFAULT_CACHE_ITEM_CLASS;
+        $this->cache = $cache ?: $this->defaultCache();
+        if (!$this->cache) {
+            throw new \InvalidArgumentException('Cannot use QpsSampler without providing a PSR-6 $cache');
+        }
+
         $this->rate = is_null($rate) ? self::DEFAULT_QPS_RATE : $rate;
         $this->key = $key ?: self::DEFAULT_CACHE_KEY;
 
@@ -90,7 +93,7 @@ class QpsSampler implements SamplerInterface
         }
 
         $item = new $this->cacheItemClass($this->key);
-        $item->set(microtime(true) + $this->nextExpiry());
+        $item->set(microtime(true) + 1.0 / $this->rate);
 
         // TODO: what if the cache fails to save?
         $this->cache->save($item);
@@ -98,21 +101,20 @@ class QpsSampler implements SamplerInterface
         return true;
     }
 
-    private function nextExpiry()
-    {
-        return 1.0 / $this->rate;
-    }
-
+    /**
+     * Detect a usable PSR-6 cache implementation
+     *
+     * @return CacheItemPoolInterface
+     */
     private function defaultCache()
     {
-        if (extension_loaded('memcached') && defined('\\Cache\\Adapter\\Memcached\\MemcachedCachePool')) {
-            $memcached = new \Memcached();
-            $memcached->addServer('localhost', 11211);
-            return new \Cache\Adapter\Memcached\MemcachedCachePool($memcached);
-        } elseif (extension_loaded('apcu') && defined('\\Cache\\Adapter\\Apcu\\ApcuCachePool')) {
+        if (extension_loaded('apcu') && class_exists('\\Cache\\Adapter\\Apcu\\ApcuCachePool')) {
+            $this->cacheItemClass = \Cache\Adapter\Common\CacheItem::class;
             return new \Cache\Adapter\Apcu\ApcuCachePool();
-        } else {
-            return new MemoryCacheItemPool();
+        } elseif (extension_loaded('apc') && class_exists('\\Cache\\Adapter\\Apc\\ApcCachePool')) {
+            $this->cacheItemClass = \Cache\Adapter\Common\CacheItem::class;
+            return new \Cache\Adapter\Apc\ApcCachePool();
         }
+        return null;
     }
 }
