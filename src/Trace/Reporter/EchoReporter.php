@@ -20,7 +20,7 @@ namespace Google\Cloud\Trace\Reporter;
 use Google\Cloud\Trace\Tracer\TracerInterface;
 
 /**
- * This implementation of the TraceReporterInterface uses `print_r` to output
+ * This implementation of the ReporterInterface uses `print_r` to output
  * the trace's representation to stdout.
  */
 class EchoReporter implements ReporterInterface

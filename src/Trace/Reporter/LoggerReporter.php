@@ -21,7 +21,7 @@ use Google\Cloud\Trace\Tracer\TracerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * This implementation of the TraceReporterInterface appends a json
+ * This implementation of the ReporterInterface appends a json
  * representation of the trace to a file.
  */
 class LoggerReporter implements ReporterInterface
@@ -44,7 +44,7 @@ class LoggerReporter implements ReporterInterface
      * @param LoggerInterface $logger The logger to write to.
      * @param string $level The logger level to write as. **Defaults to** `notice`.
      */
-    public function __construct($logger, $level = null)
+    public function __construct(LoggerInterface $logger, $level = null)
     {
         $this->logger = $logger;
         $this->level = $level ?: self::DEFAULT_LOG_LEVEL;

@@ -20,7 +20,7 @@ namespace Google\Cloud\Trace\Reporter;
 use Google\Cloud\Trace\Tracer\TracerInterface;
 
 /**
- * The TraceReporterInterface allows you to swap out the Trace reporting mechanism
+ * The ReporterInterface allows you to swap out the Trace reporting mechanism
  */
 interface ReporterInterface
 {

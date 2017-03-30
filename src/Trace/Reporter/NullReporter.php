@@ -20,7 +20,7 @@ namespace Google\Cloud\Trace\Reporter;
 use Google\Cloud\Trace\Tracer\TracerInterface;
 
 /**
- * This implementation of the TraceReporterInterface does nothing.
+ * This implementation of the ReporterInterface does nothing.
  */
 class NullReporter implements ReporterInterface
 {

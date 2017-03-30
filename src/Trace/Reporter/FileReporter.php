@@ -20,7 +20,7 @@ namespace Google\Cloud\Trace\Reporter;
 use Google\Cloud\Trace\Tracer\TracerInterface;
 
 /**
- * This implementation of the TraceReporterInterface appends a json
+ * This implementation of the ReporterInterface appends a json
  * representation of the trace to a file.
  */
 class FileReporter implements ReporterInterface
