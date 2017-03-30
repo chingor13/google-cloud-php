@@ -31,7 +31,7 @@ class RandomSampler implements SamplerInterface
     /**
      * Creates the RandomSampler
      *
-     * @param float $percentage
+     * @param float $percentage The percentage of requests to sample. Must be between 0 and 1.
      */
     public function __construct(float $percentage)
     {
@@ -43,7 +43,7 @@ class RandomSampler implements SamplerInterface
     }
 
     /**
-     * Uses a pseudo-random number generator to decide if we should sampel the request.
+     * Uses a pseudo-random number generator to decide if we should sample the request.
      *
      * @return bool
      */

@@ -46,6 +46,11 @@ class QpsSampler implements SamplerInterface
     private $cacheItemClass;
 
     /**
+     * @var string The cache key
+     */
+    private $key;
+
+    /**
      * Create a new QpsSampler. If the provided cache is shared between servers,
      * the queries per second will be counted across servers. If the cache is shared
      * between servers and you wish to sample independently on the servers, provide

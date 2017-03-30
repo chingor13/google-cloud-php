@@ -17,6 +17,9 @@
 
 namespace Google\Cloud\Trace\Sampler;
 
+use Psr\Cache\CacheItemInterface;
+use Psr\Cache\CacheItemPoolInterface;
+
 /**
  * The SamplerFactory builds SamplerInterface instances given a variety of
  * configuration options.
@@ -26,7 +29,20 @@ class SamplerFactory
     /**
      * Builds a sampler given the provided configuration options.
      *
-     * @param array|SamplerInterface $options
+     * @param array|SamplerInterface $options {
+     *     Configuration options.
+     *
+     *     @type string $type Which type of sampler to build. May be one of:
+     *           `"qps"`, `"random"`, `"enabled"`, `"disabled"`. **Defaults to**
+     *           `"qps"`.
+     *     @type float $rate The sampling rate for query per second and random sampling.
+     *           **Defaults to** `0.1`.
+     *     @type CacheItemPoolInterface $cache The PSR-6 cache implementation to use for query
+     *           per second sampling.
+     *     @type string $cacheItemClass The name of the CacheItemInterface class to use for
+     *           query per second sampling.
+     *     @type string $cacheKey The name of the cache key to use for query per second sampling.
+     * }
      * @return SamplerInterface
      */
     public static function build($options)

@@ -18,7 +18,6 @@
 namespace Google\Cloud\Trace;
 
 use Google\Cloud\Core\ArrayTrait;
-use Google\Cloud\Trace\Reporter\ReporterFactory;
 use Google\Cloud\Trace\Reporter\ReporterInterface;
 use Google\Cloud\Trace\Sampler\SamplerFactory;
 use Google\Cloud\Trace\Sampler\SamplerInterface;
