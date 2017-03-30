@@ -122,4 +122,14 @@ class QpsSampler implements SamplerInterface
         }
         return null;
     }
+
+    /**
+     * Return the query-per-second rate
+     *
+     * @return float
+     */
+    public function rate()
+    {
+        return $this->rate;
+    }
 }

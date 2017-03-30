@@ -26,20 +26,20 @@ class RandomSampler implements SamplerInterface
     /**
      * @var float The percentage of requests to sample represented as a float between 0 and 1.
      */
-    private $percentage;
+    private $rate;
 
     /**
      * Creates the RandomSampler
      *
      * @param float $percentage The percentage of requests to sample. Must be between 0 and 1.
      */
-    public function __construct(float $percentage)
+    public function __construct(float $rate)
     {
-        if ($percentage > 1 || $percentage < 0) {
+        if ($rate > 1 || $rate < 0) {
             throw new \InvalidArgumentException('Percentage must be between 0 and 1');
         }
 
-        $this->percentage = $percentage;
+        $this->rate = $rate;
     }
 
     /**
@@ -49,6 +49,16 @@ class RandomSampler implements SamplerInterface
      */
     public function shouldSample()
     {
-        return lcg_value() <= $this->percentage;
+        return lcg_value() <= $this->rate;
+    }
+
+    /**
+     * Return the percentage of requests to sample represented as a float between 0 and 1
+     *
+     * @return float
+     */
+    public function rate()
+    {
+        return $this->rate;
     }
 }

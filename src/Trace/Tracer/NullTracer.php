@@ -17,6 +17,7 @@
 
 namespace Google\Cloud\Trace\Tracer;
 
+use Google\Cloud\Trace\TraceContext;
 use Google\Cloud\Trace\TraceSpan;
 
 /**
@@ -64,11 +65,11 @@ class NullTracer implements TracerInterface
     /**
      * Return the current context.
      *
-     * @return TraceSpan
+     * @return TraceContext
      */
     public function context()
     {
-        return null;
+        return new TraceContext(null, null, false);
     }
 
     /**

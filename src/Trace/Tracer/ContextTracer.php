@@ -46,6 +46,12 @@ class ContextTracer implements TracerInterface
      */
     private $context;
 
+    /**
+     * Create a new ContextTracer
+     *
+     * @param TraceContext $context [optional] The TraceContext to begin with. If none
+     *      provided, a fresh TraceContext will be generated.
+     */
     public function __construct(TraceContext $context = null)
     {
         $this->context = $context ?: new TraceContext();
