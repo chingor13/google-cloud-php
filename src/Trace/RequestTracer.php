@@ -31,47 +31,62 @@ use Google\Cloud\Trace\Tracer\TracerInterface;
 /**
  * This class provides static functions to give you access to the current
  * request's singleton tracer. You should use this class to instrument your code.
- * The first step, is to configure and start your `RequestTracer`.
+ * The first step, is to configure and start your `RequestTracer`. Calling `start`
+ * will collect trace data during your request and report the results at the
+ * request using the provided reporter.
  *
  * Example:
  * ```
  * use Google\Cloud\ServiceBuilder;
- * use Google\Cloud\Trace\Reporter\TraceReporter;
+ * use Google\Cloud\Trace\Reporter\SyncReporter;
  *
  * $builder = new ServiceBuilder();
- * $reporter = new TraceReporter($builder->trace());
- * RequestTracer::start([
- *   'reporter' => $reporter
- * ]);
+ * $reporter = new SyncReporter($builder->trace());
+ * RequestTracer::start($reporter);
  * ```
  *
- * Not every request is traced. By default, we will use query-per-second sampling at
- * 0.1 requests/second. You can change the sampler logic by providing a `SamplerInterface`
- * or providing sampler configuration options which are passed to the `SamplerBuilder`.
+ * In the above example, every request is traced. This is not advised as it will
+ * add some latency to each request. We provide a sampling mechanism via the
+ * `SamplerInterface`. To add a sampler to your request tracer, provide the `sampler`
+ * option to your `start` function.
  *
- * Example using concretion:
+ * Example:
  * ```
- * use Google\Cloud\Trace\Sampler\RandomSampler;
+ * use Cache\Adapter\Common\CacheItem;
+ * use Cache\Adapter\Apcu\ApcuCachePool;
+ * use Google\Cloud\Trace\Sampler\QpsSampler;
  *
- * $sampler = new RandomSampler(0.01);
- * RequestTracer::start([
+ * // a PSR-6 cache implementation
+ * $cache = new ApcuCachePool();
+ * $sampler = new QpsSampler($cache, CacheItem::class, 0.1);
+ * RequestTracer::start($reporter, [
  *   'sampler' => $sampler
  * ]);
  * ```
  *
+ * The above uses a query-per-second sampler at 0.1 requests/second. The implementation
+ * requires a PSR-6 cache. See {@see Google\Cloud\Trace\Sampler\QpsSampler} for more information.
+ * You may provide your own implementation of `SamplerInterface` or use one of the provided.
+ * You may provide a configuration array for the sampler instead. See
+ * {@see Google\Cloud\Trace\Sampler\SamplerFactory::build()} for builder options.
+ *
  * Example using configuration:
  * ```
- * $cache = new Cache(); // a PSR-6 cache implementation
+ * use Cache\Adapter\Common\CacheItem;
+ * use Cache\Adapter\Apcu\ApcuCachePool;
+ *
+ * $cache = new ApcuCachePool();
  * RequestTracer::start([
  *   'sampler' => [
  *     'type' => 'qps',
- *     'rate' => '0.2',
- *     'cache' => $cache
+ *     'rate' => 0.1,
+ *     'cache' => $cache,
+ *     'cacheItemClass' => CacheItem::class
  *   ]
  * ]);
  * ```
  *
- * To instrument code, you can use static functions on the `RequestTracer`. To create a `TraceSpan`
+ * To trace code, you can use static functions on the `RequestTracer`. To create a `TraceSpan`
  * for a callable, use the `RequestTracer::instrument` function. The following code creates 1 Trace
  * with 3 nested TraceSpan instances - the root span, the 'outer' span, and the 'inner' span.
  *
@@ -186,8 +201,9 @@ class RequestTracer
      *      Configuration options. See
      *      {@see Google\Cloud\Trace\TraceSpan::__construct()} for the other available options.
      *
-     *      @type SamplerInterface|array $sampler
-     *      @type array $headers
+     *      @type SamplerInterface|array $sampler Sampler or sampler factory build arguments. See
+     *          {@see Google\Cloud\Trace\Sampler\SamplerFactory::build()} for the available options.
+     *      @type array $headers Optional array of headers to use in place of $_SERVER
      * }
      * @return RequestTracer
      */
@@ -209,7 +225,7 @@ class RequestTracer
      *      Configuration options. See
      *      {@see Google\Cloud\Trace\TraceSpan::__construct()} for the other available options.
      *
-     *      @type array $headers
+     *      @type array $headers Optional array of headers to use in place of $_SERVER
      * }
      */
     public function __construct(ReporterInterface $reporter, SamplerInterface $sampler, array $options = [])
@@ -226,11 +242,13 @@ class RequestTracer
             ? new ContextTracer($context)
             : new NullTracer();
 
-        $this->tracer->startSpan($options + [
+        $spanOptions = $options + [
             'startTime' => $this->startTimeFromHeaders($headers),
             'name' => $this->nameFromHeaders($headers),
-            'labels' => $this->labelsFromHeaders($headers)
-        ]);
+            'labels' => []
+        ];
+        $spanOptions['labels'] += $this->labelsFromHeaders($headers);
+        $this->tracer->startSpan($spanOptions);
 
         register_shutdown_function([$this, 'onExit']);
     }
@@ -277,41 +295,46 @@ class RequestTracer
      * If an exception is thrown while executing the callable, the exception will be caught,
      * the span will be closed, and the exception will be re-thrown.
      *
-     * @param array $spanOptions [optional] Options for the span.
+     * Example:
+     * ```
+     * RequestTracer::instrument(['name' => 'expensive-operation'], function () {
+     *   // do something expensive
+     * });
+     *
+     * function fib($n) {
+     *   // do something expensive
+     * }
+     * $number = RequestTracer::instrument(['name' => 'fibonacci'], 'fib', [10]);
+     * ```
+     *
+     * @param array $spanOptions Options for the span.
      *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
      * @param  callable $callable    The callable to instrument.
      * @return mixed Returns whatever the callable returns
      */
-    public function _instrument(array $spanOptions, callable $callable)
+    public function _instrument(array $spanOptions, callable $callable, array $arguments = [])
     {
-        return $this->tracer->instrument($spanOptions, $callable);
+        return $this->tracer->instrument($spanOptions, $callable, $arguments);
     }
 
     /**
      * Explicitly start a new TraceSpan. You will need to manage finishing the TraceSpan,
      * including handling any thrown exceptions.
      *
+     * Example:
+     * ```
+     * RequestTracer::startSpan(['name'= > 'expensive-operation']);
+     * // do something expensive
+     * RequestTracer::finishSpan();
+     * ```
+     *
      * @param array $spanOptions [optional] Options for the span.
      *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
      * @return TraceSpan
      */
-    public function _startSpan($spanOptions)
+    public function _startSpan(array $spanOptions = [])
     {
         return $this->tracer->startSpan($spanOptions);
-    }
-
-    /**
-     * Creates a span that started $seconds ago and ends now.
-     *
-     * @param int|float $seconds Number of seconds ago this span started
-     * @param array $spanOptions [optional] Options for the span.
-     *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
-     * @return TraceSpan
-     */
-    public function _retroSpan($seconds, $spanOptions)
-    {
-        $this->_startSpan($spanOptions + ['startTime' => microtime(true) - $seconds]);
-        return $this->_finishSpan();
     }
 
     /**

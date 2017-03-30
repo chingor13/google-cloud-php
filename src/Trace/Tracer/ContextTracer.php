@@ -54,15 +54,17 @@ class ContextTracer implements TracerInterface
     /**
      * Instrument a callable by creating a Span that manages the startTime and endTime.
      *
-     * @param  array    $spanOptions [description]
-     * @param  callable $callable    The callable to instrument.
+     * @param array $spanOptions Options for the span.
+     *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
+     * @param callable $callable The callable to instrument.
+     * @param array $arguments [optional] Arguments for the callable.
      * @return mixed The result of the callable
      */
-    public function instrument(array $spanOptions, callable $callable)
+    public function instrument(array $spanOptions, callable $callable, array $arguments = [])
     {
         $this->startSpan($spanOptions);
         try {
-            return call_user_func($callable);
+            return call_user_func_array($callable, $arguments);
         } finally {
             $this->finishSpan();
         }
@@ -71,10 +73,11 @@ class ContextTracer implements TracerInterface
     /**
      * Start a new Span. The start time is already set to the current time.
      *
-     * @param  array  $spanOptions [description]
+     * @param array $spanOptions [optional] Options for the span.
+     *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
      * @return TraceSpan
      */
-    public function startSpan(array $spanOptions)
+    public function startSpan(array $spanOptions = [])
     {
         $spanOptions += [
             'parentSpanId' => $this->context()->spanId(),

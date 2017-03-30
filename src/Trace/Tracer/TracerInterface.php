@@ -28,13 +28,15 @@ use Google\Cloud\Trace\TraceSpan;
 interface TracerInterface
 {
     /**
-     * Instrument a callable by creating a Span that
+     * Instrument a callable by creating a TraceSpan
      *
-     * @param  array    $spanOptions [description]
-     * @param  callable $callable    The callable to instrument.
+     * @param array $spanOptions Options for the span.
+     *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
+     * @param callable $callable The callable to instrument.
+     * @param array $arguments [optional] Arguments for the callable.
      * @return mixed The result of the callable
      */
-    public function instrument(array $spanOptions, callable $callable);
+    public function instrument(array $spanOptions, callable $callable, array $arguments = []);
 
     /**
      * Start a new Span. The start time is already set to the current time.
