@@ -193,7 +193,8 @@ class RequestTracer
      */
     public static function start(ReporterInterface $reporter, array $options = [])
     {
-        $samplerOptions = self::pluck('sampler', $options, false) ?: [];
+        $samplerOptions = array_key_exists('sampler', $options) ? $options['sampler'] : [];
+        unset($options['sampler']);
         $sampler = SamplerFactory::build($samplerOptions);
 
         return self::$instance = new static($reporter, $sampler, $options);
