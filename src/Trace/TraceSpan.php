@@ -28,7 +28,7 @@ use Google\Cloud\Core\ArrayTrait;
  * for its suboperations. Spans do not need to be contiguous. There may be
  * gaps between spans in a trace.
  */
-class TraceSpan implements JsonSerializable
+class TraceSpan implements \JsonSerializable
 {
     use ArrayTrait;
 
