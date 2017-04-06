@@ -28,7 +28,7 @@ use Google\Cloud\Core\ArrayTrait;
  * for its suboperations. Spans do not need to be contiguous. There may be
  * gaps between spans in a trace.
  */
-class TraceSpan
+class TraceSpan implements JsonSerializable
 {
     use ArrayTrait;
 
@@ -137,6 +137,16 @@ class TraceSpan
      * @return array
      */
     public function info()
+    {
+        return $this->info;
+    }
+
+    /**
+     * Returns the info array for serialization.
+     *
+     * @return array
+     */
+    public function jsonSerialize()
     {
         return $this->info;
     }
