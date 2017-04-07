@@ -141,11 +141,11 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
     {
         $rt = RequestTracer::start($this->reporter->reveal(), [
             'headers' => [
-                'HTTP_X_CLOUD_TRACE_CONTEXT' => '12345678901234567890123456789012/0000;o=1'
+                'HTTP_X_CLOUD_TRACE_CONTEXT' => '12345678901234567890123456789012/5555;o=1'
             ]
         ]);
         $span = $rt->tracer()->spans()[0];
-        $this->assertEquals('0000', $span->info()['parentSpanId']);
+        $this->assertEquals('5555', $span->info()['parentSpanId']);
         $context = RequestTracer::context();
         $this->assertEquals('12345678901234567890123456789012', $context->traceId());
     }

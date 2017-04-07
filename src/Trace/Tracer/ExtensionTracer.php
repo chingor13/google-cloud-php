@@ -42,7 +42,8 @@ class ExtensionTracer implements TracerInterface
      */
     public function __construct(TraceContext $context = null)
     {
-        $this->context = $context ?: new TraceContext();
+        $context = $context ?: new TraceContext();
+        stackdriver_trace_set_context($context->traceId(), (int) $context->spanId());
     }
 
     /**
@@ -95,7 +96,11 @@ class ExtensionTracer implements TracerInterface
      */
     public function context()
     {
-        return $this->context;
+        $context = stackdriver_trace_context();
+        return new TraceContext(
+            $context['traceId'],
+            $context['spanId']
+        );
     }
 
     /**
