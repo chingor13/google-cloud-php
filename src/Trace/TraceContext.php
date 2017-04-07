@@ -66,7 +66,8 @@ class TraceContext
             return new static(
                 $matches[1],
                 array_key_exists(2, $matches) ? $matches[2] : null,
-                array_key_exists(3, $matches) ? $matches[3] == '1' : null
+                array_key_exists(3, $matches) ? $matches[3] == '1' : null,
+                true
             );
         }
         return new static();
@@ -78,12 +79,14 @@ class TraceContext
      * @param string $traceId The current traceId. If not set, one will be generated for you.
      * @param string $spanId The current spanId
      * @param bool $enabled Whether or not tracing is enabled on this request **Defaults to** `null`.
+     * @param bool $fromHeader Whether or not the context was detected from an incoming header. **Defaults to** `false`.
      */
-    public function __construct($traceId = null, $spanId = null, $enabled = null)
+    public function __construct($traceId = null, $spanId = null, $enabled = null, $fromHeader = false)
     {
         $this->traceId = $traceId ?: $this->generateTraceId();
         $this->spanId = $spanId;
         $this->enabled = $enabled;
+        $this->fromHeader = $fromHeader;
     }
 
     /**
@@ -144,6 +147,16 @@ class TraceContext
     public function setEnabled($enabled)
     {
         $this->enabled = $enabled;
+    }
+
+    /**
+     * Whether or not this context was detected from a request header.
+     *
+     * @return bool
+     */
+    public function fromHeader()
+    {
+        return $this->fromHeader;
     }
 
     /**

@@ -32,6 +32,7 @@ class TraceContextTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($traceId, $context->traceId());
         $this->assertEquals($spanId, $context->spanId());
         $this->assertEquals($enabled, $context->enabled());
+        $this->assertTrue($context->fromHeader());
     }
 
     /**

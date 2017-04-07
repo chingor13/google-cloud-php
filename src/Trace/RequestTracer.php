@@ -238,6 +238,13 @@ class RequestTracer
         if ($context->enabled() !== false) {
             $context->setEnabled($context->enabled() || $sampler->shouldSample());
         }
+
+        // If the request was provided with a trace context header, we need to send it back with the response
+        // including whether the request was sampled or not.
+        if ($context->fromHeader()) {
+            $this->persistContextHeader($context);
+        }
+
         $this->tracer = $context->enabled()
             ? extension_loaded('stackdriver') ? new ExtensionTracer($context) : new ContextTracer($context)
             : new NullTracer();
@@ -402,5 +409,11 @@ class RequestTracer
             }
         }
         return null;
+    }
+
+    private function persistContextHeader($context) {
+        if (!headers_sent()) {
+            header('X-Cloud-Trace-Context: ' . $context);
+        }
     }
 }

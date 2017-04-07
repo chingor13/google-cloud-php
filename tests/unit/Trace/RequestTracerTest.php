@@ -54,7 +54,6 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
         $tracer = $rt->tracer();
 
         $this->assertTrue($tracer->enabled());
-        $this->assertInstanceOf(ContextTracer::class, $tracer);
     }
 
     public function testForceEnabledContextHeader()
@@ -67,7 +66,6 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
         $tracer = $rt->tracer();
 
         $this->assertTrue($tracer->enabled());
-        $this->assertInstanceOf(ContextTracer::class, $tracer);
     }
 
     public function testForceDisabledContextHeader()

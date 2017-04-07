@@ -194,9 +194,8 @@ class TraceSpan implements \JsonSerializable
             $when = new \DateTime(date('Y-m-d H:i:s.' . $micro));
         } elseif (is_numeric($when)) {
             // Expect that this is a timestamp
-            $when = (float) $when;
             $micro = sprintf("%06d",($when - floor($when)) * 1000000);
-            $when = new \DateTime(date('Y-m-d H:i:s.'. $micro, $when));
+            $when = new \DateTime(date('Y-m-d H:i:s.'. $micro, (int) $when));
         }
         $when->setTimezone(new \DateTimeZone('UTC'));
         return $when->format('Y-m-d\TH:i:s.u000\Z');
