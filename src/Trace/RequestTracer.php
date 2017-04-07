@@ -387,12 +387,20 @@ class RequestTracer
             self::HTTP_CLIENT_PROTOCOL => ['SERVER_PROTOCOL'],
             self::HTTP_USER_AGENT => ['HTTP_USER_AGENT'],
             self::HTTP_HOST => ['HTTP_HOST', 'SERVER_NAME'],
-            self::GAE_APP_MODULE => ['GAE_SERVICE'],
-            self::GAE_APP_VERSION => ['GAE_VERSION']
+            self::GAE_APP_MODULE => ['GAE_SERVICE']
         ];
         foreach ($labelMap as $labelKey => $headerKeys) {
             if ($val = $this->detectKey($headerKeys, $headers)) {
                 $labels[$labelKey] = $val;
+            }
+        }
+
+        // GAE_APP_VERSION header should be prefixed by the service name if it's a non-default service
+        if (array_key_exists('GAE_VERSION', $headers)) {
+            if (array_key_exists('GAE_SERVICE', $headers)) {
+                $labels[self::GAE_APP_VERSION] = $headers['GAE_SERVICE'] . ':' . $headers['GAE_VERSION'];
+            } else {
+                $labels[self::GAE_APP_VERSION] = $headers['GAE_VERSION'];
             }
         }
         $labels[self::PID] = '' . getmypid();

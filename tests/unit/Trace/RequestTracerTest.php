@@ -32,6 +32,9 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
+        if (extension_loaded('stackdriver')) {
+            stackdriver_trace_clear();
+        }
         $this->reporter = $this->prophesize(ReporterInterface::class);
     }
 
@@ -109,8 +112,8 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
                 'SERVER_PROTOCOL' => 'HTTP/1.1',
                 'HTTP_USER_AGENT' => 'test agent 0.1',
                 'HTTP_HOST' => 'example.com:8080',
-                'GAE_SERVICE' => 'test app',
-                'GAE_VERSION' => 'some version'
+                'GAE_SERVICE' => 'test_app',
+                'GAE_VERSION' => 'some_version'
             ]
         ]);
         $span = $rt->tracer()->spans()[0];
@@ -121,8 +124,8 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
             '/http/client_protocol' => 'HTTP/1.1',
             '/http/user_agent' => 'test agent 0.1',
             '/http/host' => 'example.com:8080',
-            'g.co/gae/app/module' => 'test app',
-            'g.co/gae/app/version' => 'some version'
+            'g.co/gae/app/module' => 'test_app',
+            'g.co/gae/app/version' => 'test_app:some_version'
         ];
 
         foreach ($expectedLabels as $key => $value) {
