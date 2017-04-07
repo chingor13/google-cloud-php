@@ -96,7 +96,9 @@ class ExtensionTracer implements TracerInterface
      */
     public function context()
     {
-        $context = stackdriver_trace_context();
+        $context = stackdriver_trace_context() + [
+            'spanId' => null
+        ];
         return new TraceContext(
             $context['traceId'],
             $context['spanId']
