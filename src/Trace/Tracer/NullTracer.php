@@ -31,11 +31,11 @@ class NullTracer implements TracerInterface
      *
      * @param array $spanOptions Options for the span.
      *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
-     * @param callable $callable The callable to instrument.
+     * @param callable $callable The callable to inSpan.
      * @param array $arguments [optional] Arguments for the callable.
      * @return mixed The result of the callable
      */
-    public function instrument(array $spanOptions, callable $callable, array $arguments = [])
+    public function inSpan(array $spanOptions, callable $callable, array $arguments = [])
     {
         return call_user_func_array($callable, $arguments);
     }

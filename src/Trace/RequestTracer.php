@@ -87,15 +87,15 @@ use Google\Cloud\Trace\Tracer\TracerInterface;
  * ```
  *
  * To trace code, you can use static functions on the `RequestTracer`. To create a `TraceSpan`
- * for a callable, use the `RequestTracer::instrument` function. The following code creates 1 Trace
+ * for a callable, use the `RequestTracer::inSpan` function. The following code creates 1 Trace
  * with 3 nested TraceSpan instances - the root span, the 'outer' span, and the 'inner' span.
  *
  * Example:
  * ```
  * RequestTracer::start();
- * RequestTracer::instrument(['name' => 'outer'], function () {
+ * RequestTracer::inSpan(['name' => 'outer'], function () {
  *   // some code
- *   RequestTracer::instrument(['name' => 'inner'], function () {
+ *   RequestTracer::inSpan(['name' => 'inner'], function () {
  *     // some code
  *   });
  *   // some code
@@ -111,7 +111,7 @@ use Google\Cloud\Trace\Tracer\TracerInterface;
  * RequestTracer::endSpan();
  * ```
  *
- * It is recommended that you use the `instrument` method where you can. An uncaught exception between a
+ * It is recommended that you use the `inSpan` method where you can. An uncaught exception between a
  * `startSpan` and `endSpan` may not correctly close spans.
  */
 class RequestTracer
@@ -298,30 +298,30 @@ class RequestTracer
     }
 
     /**
-     * Instrument a callable by creating a TraceSpan that manages the startTime and endTime.
+     * inSpan a callable by creating a TraceSpan that manages the startTime and endTime.
      * If an exception is thrown while executing the callable, the exception will be caught,
      * the span will be closed, and the exception will be re-thrown.
      *
      * Example:
      * ```
-     * RequestTracer::instrument(['name' => 'expensive-operation'], function () {
+     * RequestTracer::inSpan(['name' => 'expensive-operation'], function () {
      *   // do something expensive
      * });
      *
      * function fib($n) {
      *   // do something expensive
      * }
-     * $number = RequestTracer::instrument(['name' => 'fibonacci'], 'fib', [10]);
+     * $number = RequestTracer::inSpan(['name' => 'fibonacci'], 'fib', [10]);
      * ```
      *
      * @param array $spanOptions Options for the span.
      *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
-     * @param  callable $callable    The callable to instrument.
+     * @param  callable $callable    The callable to inSpan.
      * @return mixed Returns whatever the callable returns
      */
-    public function _instrument(array $spanOptions, callable $callable, array $arguments = [])
+    public function _inSpan(array $spanOptions, callable $callable, array $arguments = [])
     {
-        return $this->tracer->instrument($spanOptions, $callable, $arguments);
+        return $this->tracer->inSpan($spanOptions, $callable, $arguments);
     }
 
     /**
