@@ -84,7 +84,7 @@ class ExtensionTracer implements TracerInterface
      *
      * @return TraceSpan The span just finished.
      */
-    public function finishSpan()
+    public function endSpan()
     {
         return stackdriver_trace_finish();
     }

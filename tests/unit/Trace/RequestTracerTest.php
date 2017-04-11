@@ -125,7 +125,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
             '/http/user_agent' => 'test agent 0.1',
             '/http/host' => 'example.com:8080',
             'g.co/gae/app/module' => 'test_app',
-            'g.co/gae/app/version' => 'test_app:some_version'
+            'g.co/gae/app/version' => 'some_version'
         ];
 
         foreach ($expectedLabels as $key => $value) {

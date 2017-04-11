@@ -73,7 +73,7 @@ class TraceSpan implements \JsonSerializable
             $this->setStart($options['startTime']);
         }
         if (array_key_exists('endTime', $options)) {
-            $this->setFinish($options['endTime']);
+            $this->setEnd($options['endTime']);
         }
 
         $this->info += [
@@ -106,7 +106,7 @@ class TraceSpan implements \JsonSerializable
      * @param  \DateTimeInterface|int|float|string $when [optional] The end time of this span.
      *         **Defaults to** now.
      */
-    public function setFinish($when = null)
+    public function setEnd($when = null)
     {
         $this->info['endTime'] = $this->formatDate($when);
     }

@@ -51,7 +51,7 @@ interface TracerInterface
      *
      * @return TraceSpan The span just finished.
      */
-    public function finishSpan();
+    public function endSpan();
 
     /**
      * Return the current context.

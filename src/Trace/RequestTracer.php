@@ -108,11 +108,11 @@ use Google\Cloud\Trace\Tracer\TracerInterface;
  * ```
  * RequestTracer::startSpan(['name' => 'expensive-operation']);
  * // do expensive operation
- * RequestTracer::finishSpan();
+ * RequestTracer::endSpan();
  * ```
  *
  * It is recommended that you use the `instrument` method where you can. An uncaught exception between a
- * `startSpan` and `finishSpan` may not correctly close spans.
+ * `startSpan` and `endSpan` may not correctly close spans.
  */
 class RequestTracer
 {
@@ -282,7 +282,7 @@ class RequestTracer
 
         // close all open spans
         do {
-            $span = $this->tracer->finishSpan();
+            $span = $this->tracer->endSpan();
         } while ($span);
         $this->reporter->report($this->tracer);
     }
@@ -332,7 +332,7 @@ class RequestTracer
      * ```
      * RequestTracer::startSpan(['name'= > 'expensive-operation']);
      * // do something expensive
-     * RequestTracer::finishSpan();
+     * RequestTracer::endSpan();
      * ```
      *
      * @param array $spanOptions [optional] Options for the span.
@@ -349,9 +349,9 @@ class RequestTracer
      *
      * @return TraceSpan
      */
-    public function _finishSpan()
+    public function _endSpan()
     {
-        return $this->tracer->finishSpan();
+        return $this->tracer->endSpan();
     }
 
     /**

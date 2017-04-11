@@ -72,7 +72,7 @@ class ContextTracer implements TracerInterface
         try {
             return call_user_func_array($callable, $arguments);
         } finally {
-            $this->finishSpan();
+            $this->endSpan();
         }
     }
 
@@ -102,12 +102,12 @@ class ContextTracer implements TracerInterface
      *
      * @return TraceSpan The span just finished.
      */
-    public function finishSpan()
+    public function endSpan()
     {
         $span = array_shift($this->stack);
         $this->context->setSpanId(empty($this->stack) ? null : $this->stack[0]->spanId());
         if ($span) {
-            $span->setFinish();
+            $span->setEnd();
         }
         return $span;
     }
