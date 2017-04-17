@@ -388,7 +388,7 @@ class RequestTracer
             self::HTTP_USER_AGENT => ['HTTP_USER_AGENT'],
             self::HTTP_HOST => ['HTTP_HOST', 'SERVER_NAME'],
             self::GAE_APP_MODULE => ['GAE_SERVICE'],
-            self::GAE_APP_VERSION => ['GAE_VERSION']
+            self::GAE_APP_MODULE_VERSION => ['GAE_VERSION']
         ];
         foreach ($labelMap as $labelKey => $headerKeys) {
             if ($val = $this->detectKey($headerKeys, $headers)) {

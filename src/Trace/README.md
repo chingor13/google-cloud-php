@@ -11,6 +11,19 @@ that project.
 
 ## Installation
 
+1. Install with `composer` or add to your `composer.json`.
+
 ```
 $ composer require google/cloud-trace
+```
+
+2. Include and start the labrary as the first action in your application:
+
+```php
+use Google\Cloud\Trace\TraceClient;
+use Google\Cloud\Trace\Reporter\SyncReporter;
+
+$trace = new TraceClient();
+$reporter = new SyncReporter($trace);
+RequestTracer::start($reporter);
 ```
