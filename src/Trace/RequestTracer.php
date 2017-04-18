@@ -131,8 +131,6 @@ class RequestTracer
     const HTTP_HOST = '/http/host';
     const HTTP_METHOD = '/http/method';
     const HTTP_REDIRECTED_URL = '/http/redirected_url';
-    const HTTP_REQUEST_SIZE = '/http/request/size';
-    const HTTP_RESPONSE_SIZE = '/http/response/size';
     const HTTP_STATUS_CODE = '/http/status_code';
     const HTTP_URL = '/http/url';
     const HTTP_USER_AGENT = '/http/user_agent';
@@ -144,26 +142,6 @@ class RequestTracer
     const GAE_APP_MODULE = 'g.co/gae/app/module';
     const GAE_APP_MODULE_VERSION = 'g.co/gae/app/module_version';
     const GAE_APP_VERSION = 'g.co/gae/app/version';
-    const GAE_DATASTORE_COUNT = 'g.co/gae/datastore/count';
-    const GAE_DATASTORE_CURSOR = 'g.co/gae/datastore/cursor';
-    const GAE_DATASTORE_ENTITY_WRITES = 'g.co/gae/datastore/entity_writes';
-    const GAE_DATASTORE_HAS_ANCESTOR = 'g.co/gae/datastore/has_ancestor';
-    const GAE_DATASTORE_HAS_CURSOR = 'g.co/gae/datastore/has_cursor';
-    const GAE_DATASTORE_HAS_TRANSACTION = 'g.co/gae/datastore/has_transaction';
-    const GAE_DATASTORE_INDEX_WRITES = 'g.co/gae/datastore/index_writes';
-    const GAE_DATASTORE_KIND = 'g.co/gae/datastore/kind';
-    const GAE_DATASTORE_LIMIT = 'g.co/gae/datastore/limit';
-    const GAE_DATASTORE_MORE_RESULTS = 'g.co/gae/datastore/more_results';
-    const GAE_DATASTORE_OFFSET = 'g.co/gae/datastore/offset';
-    const GAE_DATASTORE_REQUESTED_ENTITY_DELETES = 'g.co/gae/datastore/requested_entity_deletes';
-    const GAE_DATASTORE_REQUESTED_ENTITY_PUTS = 'g.co/gae/datastore/requested_entity_puts';
-    const GAE_DATASTORE_SIZE = 'g.co/gae/datastore/size';
-    const GAE_DATASTORE_SKIPPED = 'g.co/gae/datastore/skipped';
-    const GAE_DATASTORE_TRANSACTION_HANDLE = 'g.co/gae/datastore/transaction_handle';
-    const GAE_ERROR_MESSAGE = 'g.co/gae/error_message';
-    const GAE_MEMCACHE_COUNT = 'g.co/gae/memcache/count';
-    const GAE_MEMCACHE_SIZE = 'g.co/gae/memcache/size';
-    const GAE_REQUEST_LOG_ID = 'g.co/gae/request_log_id';
 
     /**
      * @var RequestTracer Singleton instance
@@ -388,7 +366,10 @@ class RequestTracer
             self::HTTP_USER_AGENT => ['HTTP_USER_AGENT'],
             self::HTTP_HOST => ['HTTP_HOST', 'SERVER_NAME'],
             self::GAE_APP_MODULE => ['GAE_SERVICE'],
-            self::GAE_APP_MODULE_VERSION => ['GAE_VERSION']
+            self::GAE_APP_MODULE_VERSION => ['GAE_VERSION'],
+            self::HTTP_CLIENT_CITY => ['HTTP_X_APPENGINE_CITY'],
+            self::HTTP_CLIENT_REGION => ['HTTP_X_APPENGINE_REGION'],
+            self::HTTP_CLIENT_COUNTRY => ['HTTP_X_APPENGINE_COUNTRY']
         ];
         foreach ($labelMap as $labelKey => $headerKeys) {
             if ($val = $this->detectKey($headerKeys, $headers)) {
@@ -397,7 +378,7 @@ class RequestTracer
         }
 
         $labels[self::PID] = '' . getmypid();
-        $labels[self::AGENT] = 'google-cloud-php';
+        $labels[self::AGENT] = 'google-cloud-php ' . TraceClient::VERSION;
 
         return $labels;
     }
