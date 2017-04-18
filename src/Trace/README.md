@@ -111,7 +111,7 @@ $pi = RequestTracer::inSpan(['name' => 'expensive-operation'], 'calculatePi', [1
 RequestTracer::startSpan(['name' => 'expensive-operation']);
 try {
     $pi = calculatePi(1000);
-} ensure {
+} finally {
     // Make sure we close the span to avoid mismatched span boundaries
     RequestTracer::endSpan();
 }
