@@ -89,7 +89,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
         $rt = RequestTracer::start($this->reporter->reveal(), [
             'sampler' => ['type' => 'enabled']
         ]);
-        RequestTracer::instrument(['name' => 'inner'], function () {});
+        RequestTracer::inSpan(['name' => 'inner'], function () {});
         $rt->onExit();
         $spans = $rt->tracer()->spans();
         $this->assertCount(2, $spans);
@@ -125,7 +125,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
             '/http/user_agent' => 'test agent 0.1',
             '/http/host' => 'example.com:8080',
             'g.co/gae/app/module' => 'test_app',
-            'g.co/gae/app/version' => 'some_version'
+            'g.co/gae/app/module_version' => 'some_version'
         ];
 
         foreach ($expectedLabels as $key => $value) {
@@ -134,7 +134,7 @@ class RequestTracerTest extends \PHPUnit_Framework_TestCase
         }
         $this->assertArrayHasKey('/pid', $labels);
         $this->assertArrayHasKey('/agent', $labels);
-        $this->assertEquals('google-cloud-php', $labels['/agent']);
+        $this->assertEquals('google-cloud-php 0.1.0', $labels['/agent']);
     }
 
     public function testCanParseParentContext()
