@@ -42,14 +42,11 @@ interface TracerInterface
      * Start a new Span. The start time is already set to the current time.
      *
      * @param  array  $spanOptions [description]
-     * @return TraceSpan
      */
     public function startSpan(array $spanOptions);
 
     /**
      * Finish the current context's Span.
-     *
-     * @return TraceSpan The span just finished.
      */
     public function endSpan();
 

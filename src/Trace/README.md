@@ -77,7 +77,6 @@ If no cache is available, you can use the `RandomSampler` which simply samples a
 percentage of requests.
 
 ```php
-
 use Google\Cloud\Trace\TraceClient;
 use Google\Cloud\Trace\Reporter\SyncReporter;
 use Google\Cloud\Trace\Sampler\RandomSampler;

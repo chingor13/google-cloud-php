@@ -71,18 +71,15 @@ class ExtensionTracer implements TracerInterface
      *
      * @param array $spanOptions [optional] Options for the span.
      *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
-     * @return TraceSpan
      */
     public function startSpan(array $spanOptions)
     {
         $name = $this->pluck('name', $spanOptions, false) ?: $this->generateSpanName();
-        return stackdriver_trace_begin($name, $spanOptions);
+        stackdriver_trace_begin($name, $spanOptions);
     }
 
     /**
      * Finish the current context's Span.
-     *
-     * @return TraceSpan The span just finished.
      */
     public function endSpan()
     {

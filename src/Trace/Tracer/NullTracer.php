@@ -45,21 +45,16 @@ class NullTracer implements TracerInterface
      *
      * @param array $spanOptions [optional] Options for the span.
      *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
-     * @return TraceSpan
      */
     public function startSpan(array $spanOptions)
     {
-        return;
     }
 
     /**
      * Finish the current context's Span.
-     *
-     * @return TraceSpan The span just finished.
      */
     public function endSpan()
     {
-        return;
     }
 
     /**

@@ -81,7 +81,6 @@ class ContextTracer implements TracerInterface
      *
      * @param array $spanOptions [optional] Options for the span.
      *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
-     * @return TraceSpan
      */
     public function startSpan(array $spanOptions = [])
     {
@@ -94,13 +93,10 @@ class ContextTracer implements TracerInterface
         array_push($this->spans, $span);
         array_unshift($this->stack, $span);
         $this->context->setSpanId($span->spanId());
-        return $span;
     }
 
     /**
      * Finish the current context's Span.
-     *
-     * @return TraceSpan The span just finished.
      */
     public function endSpan()
     {
@@ -109,7 +105,6 @@ class ContextTracer implements TracerInterface
         if ($span) {
             $span->setEnd();
         }
-        return $span;
     }
 
     /**
