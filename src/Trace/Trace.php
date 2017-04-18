@@ -165,5 +165,4 @@ class Trace
         $this->validateBatch($spans, TraceSpan::class);
         $this->spans = $spans;
     }
-
 }
