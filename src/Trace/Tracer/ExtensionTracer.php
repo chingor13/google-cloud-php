@@ -57,12 +57,11 @@ class ExtensionTracer implements TracerInterface
      */
     public function inSpan(array $spanOptions, callable $callable, array $arguments = [])
     {
-        $name = $this->pluck('name', $spanOptions, false) ?: $this->generateSpanName();
-        stackdriver_trace_begin($name, $spanOptions);
+        $this->startSpan($spanOptions);
         try {
             return call_user_func_array($callable, $arguments);
         } finally {
-            stackdriver_trace_finish();
+            $this->endSpan();
         }
     }
 

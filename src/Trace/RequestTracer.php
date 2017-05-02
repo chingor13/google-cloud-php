@@ -126,7 +126,9 @@ class RequestTracer
         unset($options['sampler']);
         $sampler = SamplerFactory::build($samplerOptions);
 
-        return self::$instance = new RequestHandler($reporter, $sampler, $options);
+        self::$instance = new RequestHandler($reporter, $sampler);
+        self::$instance->start($options);
+        return self::$instance;
     }
 
     /**

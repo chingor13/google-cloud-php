@@ -17,6 +17,8 @@
 
 namespace Google\Cloud\Core;
 
+use Google\Cloud\Core\Context\Context;
+
 /**
  * Exponential backoff implementation.
  */
@@ -71,7 +73,8 @@ class ExponentialBackoff
 
         while (true) {
             try {
-                return call_user_func_array($function, $arguments);
+                $retryContext = Context::current()->withValue('retryAttempt', $retryAttempt);
+                return call_user_func_array($retryContext->wrap($function), $arguments);
             } catch (\Exception $exception) {
                 if ($this->retryFunction) {
                     if (!call_user_func($this->retryFunction, $exception)) {

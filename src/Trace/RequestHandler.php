@@ -83,11 +83,10 @@ class RequestHandler
      *      @type array $headers Optional array of headers to use in place of $_SERVER
      * }
      */
-    public function __construct(ReporterInterface $reporter, SamplerInterface $sampler, array $options = [])
+    public function __construct(ReporterInterface $reporter, SamplerInterface $sampler)
     {
         $this->reporter = $reporter;
-        $headers = $this->pluck('headers', $options, false) ?: $_SERVER;
-        $context = TraceContext::fromHeaders($headers);
+        $context = TraceContext::fromContext();
 
         // If the context force disables tracing, don't consult the $sampler.
         if ($context->enabled() !== false) {
@@ -103,13 +102,17 @@ class RequestHandler
         $this->tracer = $context->enabled()
             ? extension_loaded('stackdriver') ? new ExtensionTracer($context) : new ContextTracer($context)
             : new NullTracer();
+    }
 
-        $spanOptions = $options + [
-            'startTime' => $this->startTimeFromHeaders($headers),
-            'name' => $this->nameFromHeaders($headers),
+    public function start(array $spanOptions = [], array $server = null)
+    {
+        $server = $server ?: $_SERVER;
+        $spanOptions = $spanOptions + [
+            'startTime' => $this->startTimeFromHeaders($server),
+            'name' => $this->nameFromHeaders($server),
             'labels' => []
         ];
-        $spanOptions['labels'] += $this->labelsFromHeaders($headers);
+        $spanOptions['labels'] += $this->labelsFromHeaders($server);
         $this->tracer->startSpan($spanOptions);
 
         register_shutdown_function([$this, 'onExit']);

@@ -18,6 +18,7 @@
 namespace Google\Cloud\Trace\Tracer;
 
 use Google\Cloud\Core\ArrayTrait;
+use Google\Cloud\Core\Context;
 use Google\Cloud\Trace\TraceClient;
 use Google\Cloud\Trace\TraceSpan;
 use Google\Cloud\Trace\TraceContext;
@@ -35,27 +36,6 @@ class ContextTracer implements TracerInterface
      * @var TraceSpan[] List of Spans to report
      */
     private $spans = [];
-
-    /**
-     * @var TraceSpan[] Stack of Spans that maintain our nested call stack.
-     */
-    private $stack = [];
-
-    /**
-     * @var TraceContext The current context of this tracer.
-     */
-    private $context;
-
-    /**
-     * Create a new ContextTracer
-     *
-     * @param TraceContext $context [optional] The TraceContext to begin with. If none
-     *      provided, a fresh TraceContext will be generated.
-     */
-    public function __construct(TraceContext $context = null)
-    {
-        $this->context = $context ?: new TraceContext();
-    }
 
     /**
      * Instrument a callable by creating a Span that manages the startTime and endTime.
@@ -84,15 +64,16 @@ class ContextTracer implements TracerInterface
      */
     public function startSpan(array $spanOptions = [])
     {
+        $context = Context::current();
         $spanOptions += [
-            'parentSpanId' => $this->context()->spanId(),
+            'parentSpanId' => $context->value('spanId'),
             'startTime' => microtime(true)
         ];
 
         $span = new TraceSpan($spanOptions);
         array_push($this->spans, $span);
-        array_unshift($this->stack, $span);
-        $this->context->setSpanId($span->spanId());
+
+        Context::attach($context->withValues(['span' => $span, 'spanId' => $span->spanId()]));
     }
 
     /**
@@ -100,8 +81,8 @@ class ContextTracer implements TracerInterface
      */
     public function endSpan()
     {
-        $span = array_shift($this->stack);
-        $this->context->setSpanId(empty($this->stack) ? null : $this->stack[0]->spanId());
+        $span = Context::detach()->value('span');
+
         if ($span) {
             $span->setEnd();
         }
@@ -114,7 +95,7 @@ class ContextTracer implements TracerInterface
      */
     public function context()
     {
-        return $this->context;
+        return TraceContext::fromContext();
     }
 
     /**

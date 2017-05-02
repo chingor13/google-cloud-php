@@ -17,6 +17,8 @@
 
 namespace Google\Cloud\Trace;
 
+use Google\Cloud\Core\Context;
+
 /**
  * TraceContext encapsulates your current context within your request's trace. It includes
  * 3 fields: the `traceId`, the current `spanId`, and an `enabled` flag which indicates whether
@@ -35,9 +37,6 @@ class TraceContext
 {
     use IdGeneratorTrait;
 
-    const HTTP_HEADER = 'HTTP_X_CLOUD_TRACE_CONTEXT';
-    const CONTEXT_HEADER_FORMAT = '/([0-9a-f]{32})(?:\/(\d+))?(?:;o=(\d+))?/';
-
     /**
      * @var string The current traceId.
      */
@@ -54,23 +53,19 @@ class TraceContext
     private $enabled;
 
     /**
-     * Parses a headers array (normally the $_SERVER variable) and builds a TraceContext objects
-     *
-     * @param  array $headers The headers array (normally the $_SERVER variable)
-     * @return TraceContext
+     * @var bool Whether or not this context came from a HTTP header.
      */
-    public static function fromHeaders($headers)
+    private $fromHeader;
+
+    public static function fromContext(Context $context = null)
     {
-        if (array_key_exists(self::HTTP_HEADER, $headers) &&
-            preg_match(self::CONTEXT_HEADER_FORMAT, $headers[self::HTTP_HEADER], $matches)) {
-            return new static(
-                $matches[1],
-                array_key_exists(2, $matches) ? $matches[2] : null,
-                array_key_exists(3, $matches) ? $matches[3] == '1' : null,
-                true
-            );
-        }
-        return new static();
+        $context = $context ?: Context::current();
+        return new static(
+            $context->value('traceId'),
+            $context->value('spanId'),
+            $context->value('traceEnabled'),
+            $context->value('traceSampledFromHeader')
+        );
     }
 
     /**
@@ -86,7 +81,7 @@ class TraceContext
         $this->traceId = $traceId ?: $this->generateTraceId();
         $this->spanId = $spanId;
         $this->enabled = $enabled;
-        $this->fromHeader = $fromHeader;
+        $this->fromHeader = !!$fromHeader;
     }
 
     /**
