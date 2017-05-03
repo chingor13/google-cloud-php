@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Trace;
+namespace Google\Cloud\Core;
 
 /**
  * Trait which provides helper methods for customer-supplied encryption.

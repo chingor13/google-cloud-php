@@ -1,6 +1,6 @@
 <?php
 
-namespace Google\Cloud\Core;
+namespace Google\Cloud\Core\Context;
 
 class Context
 {

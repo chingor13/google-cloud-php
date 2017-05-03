@@ -20,6 +20,7 @@ namespace Google\Cloud\Trace;
 use Google\Cloud\Core\Exception\NotFoundException;
 use Google\Cloud\Core\ValidateTrait;
 use Google\Cloud\Trace\Connection\ConnectionInterface;
+use Google\Cloud\Core\IdGeneratorTrait;
 
 /**
  * This plain PHP class represents a Trace resource. For more information see

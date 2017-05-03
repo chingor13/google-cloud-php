@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Trace;
+namespace Google\Cloud\Core\Context;
 
-use Google\Cloud\Core\Context;
+use Google\Cloud\Core\IdGeneratorTrait;
 
 /**
  * TraceContext encapsulates your current context within your request's trace. It includes

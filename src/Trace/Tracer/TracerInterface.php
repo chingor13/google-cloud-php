@@ -17,7 +17,7 @@
 
 namespace Google\Cloud\Trace\Tracer;
 
-use Google\Cloud\Trace\TraceContext;
+use Google\Cloud\Core\Context\TraceContext;
 use Google\Cloud\Trace\TraceSpan;
 
 /**

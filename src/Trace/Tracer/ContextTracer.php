@@ -18,10 +18,10 @@
 namespace Google\Cloud\Trace\Tracer;
 
 use Google\Cloud\Core\ArrayTrait;
-use Google\Cloud\Core\Context;
+use Google\Cloud\Core\Context\Context;
+use Google\Cloud\Core\Context\TraceContext;
 use Google\Cloud\Trace\TraceClient;
 use Google\Cloud\Trace\TraceSpan;
-use Google\Cloud\Trace\TraceContext;
 
 /**
  * This implementation of the TracerInterface manages your trace context throughout
