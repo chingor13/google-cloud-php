@@ -17,7 +17,7 @@
 
 namespace Google\Cloud\Trace;
 
-use Google\Cloud\Core\Context;
+use Google\Cloud\Core\Context\Context;
 
 /**
  * TraceContext encapsulates your current context within your request's trace. It includes
@@ -89,6 +89,20 @@ class TraceContext
         $context = Context::current()->withValues($values);
         Context::attach($context);
 
+        return self::fromContext($context);
+    }
+
+    /**
+     * Returns a TraceContext from the provided generic context
+     *
+     * @param Context $context [optional] The Context to read values from. **Defaults to** null. If null, we will
+     *      use the current context.
+     * @return TraceContext
+     */
+    public static function fromContext(Context $context = null)
+    {
+        $context = $context ?: Context::current();
+
         return new static(
             $context->value('traceId'),
             $context->value('spanId'),
@@ -124,16 +138,6 @@ class TraceContext
     }
 
     /**
-     * Set the current traceId.
-     *
-     * @param string $traceId The traceId to set.
-     */
-    public function setTraceId($traceId)
-    {
-        $this->traceId = $traceId;
-    }
-
-    /**
      * Fetch the current spanId.
      *
      * @return string
@@ -141,16 +145,6 @@ class TraceContext
     public function spanId()
     {
         return $this->spanId;
-    }
-
-    /**
-     * Set the current spanId.
-     *
-     * @param string $spanId The spanId to set.
-     */
-    public function setSpanId($spanId)
-    {
-        $this->spanId = $spanId;
     }
 
     /**

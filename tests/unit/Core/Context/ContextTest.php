@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Tests\Unit\Core;
+namespace Google\Cloud\Tests\Unit\Core\Context;
 
-use Google\Cloud\Core\Context;
+use Google\Cloud\Core\Context\Context;
 
 /**
  * @group core
@@ -56,5 +56,37 @@ class ContextTest extends \PHPUnit_Framework_TestCase
         $func = $context->wrap([$this, 'plus']);
         $ret = call_user_func_array($func, [1, 2]);
         $this->assertEquals(6, $ret);
+    }
+
+    public function testCall()
+    {
+        $context = new Context();
+        $context = $context->withValue('z', 3);
+        $ret = $context->call([$this, 'plus'], [1, 2]);
+        $this->assertEquals(6, $ret);
+    }
+
+    /**
+     * @expectedException PHPUnit_Framework_Error_Warning
+     */
+    public function testMismatchedContext()
+    {
+        $context = new Context();
+        $context2 = new Context(['foo' => 'bar']);
+        $context->attach();
+        $context2->attach();
+        $context->detach($context2);
+    }
+
+    public function testValue()
+    {
+        $context = new Context(['foo' => 'bar']);
+        $this->assertEquals('bar', $context->value('foo'));
+    }
+
+    public function testValueReturnsNullForUnknownKey()
+    {
+        $context = new Context();
+        $this->assertNull($context->value('foo'));
     }
 }
