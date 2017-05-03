@@ -17,7 +17,7 @@
 
 namespace Google\Cloud\Core;
 
-use Google\Cloud\Core\Context\Context;
+use Google\Cloud\Core\Context;
 
 /**
  * Exponential backoff implementation.

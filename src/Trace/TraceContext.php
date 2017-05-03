@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-namespace Google\Cloud\Core\Context;
+namespace Google\Cloud\Trace;
 
-use Google\Cloud\Core\IdGeneratorTrait;
+use Google\Cloud\Core\Context;
 
 /**
  * TraceContext encapsulates your current context within your request's trace. It includes
@@ -35,6 +35,9 @@ use Google\Cloud\Core\IdGeneratorTrait;
  */
 class TraceContext
 {
+    const HTTP_HEADER = 'HTTP_X_CLOUD_TRACE_CONTEXT';
+    const CONTEXT_HEADER_FORMAT = '/([0-9a-f]{32})(?:\/(\d+))?(?:;o=(\d+))?/';
+
     use IdGeneratorTrait;
 
     /**
@@ -57,9 +60,35 @@ class TraceContext
      */
     private $fromHeader;
 
-    public static function fromContext(Context $context = null)
+    /**
+     * Updates the current context from the $server params - normally $_SERVER
+     *
+     * @param array $server Server params. **Defaults to** null. If null, we will use $_SERVER.
+     * @return TraceContext
+     */
+    public static function loadFromServer(array $server = null)
     {
-        $context = $context ?: Context::current();
+        $server = $server ?: $_SERVER;
+        $values = [];
+
+        if (array_key_exists(self::HTTP_HEADER, $server) &&
+            preg_match(self::CONTEXT_HEADER_FORMAT, $server[self::HTTP_HEADER], $matches)) {
+            $values['traceId'] = $matches[1];
+
+            if (isset($matches[2])) {
+                $values['spanId'] = $matches[2];
+            }
+
+            if (isset($matches[3])) {
+                $values['traceEnabled'] = $matches[3] == '1';
+            }
+
+            $values['traceSampledFromHeader'] = true;
+        }
+
+        $context = Context::current()->withValues($values);
+        Context::attach($context);
+
         return new static(
             $context->value('traceId'),
             $context->value('spanId'),

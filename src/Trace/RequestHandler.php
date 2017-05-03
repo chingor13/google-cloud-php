@@ -18,11 +18,8 @@
 namespace Google\Cloud\Trace;
 
 use Google\Cloud\Core\ArrayTrait;
-use Google\Cloud\Core\Context\TraceContext;
 use Google\Cloud\Trace\Reporter\ReporterInterface;
 use Google\Cloud\Trace\Sampler\SamplerInterface;
-use Google\Cloud\Trace\TraceClient;
-use Google\Cloud\Trace\TraceSpan;
 use Google\Cloud\Trace\Tracer\ContextTracer;
 use Google\Cloud\Trace\Tracer\ExtensionTracer;
 use Google\Cloud\Trace\Tracer\NullTracer;
@@ -77,17 +74,13 @@ class RequestHandler
      *
      * @param ReporterInterface $reporter How to report the trace at the end of the request
      * @param SamplerInterface $sampler Which sampler to use for sampling requests
-     * @param array $options [optional] {
-     *      Configuration options. See
-     *      {@see Google\Cloud\Trace\TraceSpan::__construct()} for the other available options.
-     *
-     *      @type array $headers Optional array of headers to use in place of $_SERVER
-     * }
+     * @param $server Optional array of headers to use in place of $_SERVER
      */
-    public function __construct(ReporterInterface $reporter, SamplerInterface $sampler)
+    public function __construct(ReporterInterface $reporter, SamplerInterface $sampler, array $server = null)
     {
         $this->reporter = $reporter;
-        $context = TraceContext::fromContext();
+        $server = $server ?: $_SERVER;
+        $context = TraceContext::loadFromServer($server);
 
         // If the context force disables tracing, don't consult the $sampler.
         if ($context->enabled() !== false) {
@@ -105,6 +98,14 @@ class RequestHandler
             : new NullTracer();
     }
 
+    /**
+     * Start the root span for this request
+     *
+     * @param array $spanOptions Options for the span.
+     *      {@see Google\Cloud\Trace\TraceSpan::__construct()}
+     * @param $server Optional array of headers to use in place of $_SERVER
+     * @return TraceSpan
+     */
     public function start(array $spanOptions = [], array $server = null)
     {
         $server = $server ?: $_SERVER;
@@ -114,9 +115,10 @@ class RequestHandler
             'labels' => []
         ];
         $spanOptions['labels'] += $this->labelsFromHeaders($server);
-        $this->tracer->startSpan($spanOptions);
+        $span = $this->tracer->startSpan($spanOptions);
 
         register_shutdown_function([$this, 'onExit']);
+        return $span;
     }
 
     /**

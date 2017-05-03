@@ -18,9 +18,9 @@
 namespace Google\Cloud\Trace\Tracer;
 
 use Google\Cloud\Core\ArrayTrait;
-use Google\Cloud\Core\Context\Context;
-use Google\Cloud\Core\Context\TraceContext;
+use Google\Cloud\Core\Context;
 use Google\Cloud\Trace\TraceClient;
+use Google\Cloud\Trace\TraceContext;
 use Google\Cloud\Trace\TraceSpan;
 
 /**
