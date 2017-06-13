@@ -77,6 +77,7 @@ static zval *stackdriver_trace_find_callback(zend_string *function_name)
     return zend_hash_find(STACKDRIVER_TRACE_G(traced_functions), function_name);
 }
 
+// Add a label to the trace span struct
 static int stackdriver_trace_add_label(stackdriver_trace_span_t *span, zend_string *k, zend_string *v)
 {
     zval zv;
@@ -85,26 +86,25 @@ static int stackdriver_trace_add_label(stackdriver_trace_span_t *span, zend_stri
     if (span->labels == NULL) {
         span->labels = emalloc(sizeof(HashTable));
         zend_hash_init(span->labels, 4, NULL, ZVAL_PTR_DTOR, 0);
-        // zend_hash_init(span->labels, 4, NULL, NULL, 0);
     }
 
     // put the string value into a zval and save it in the HashTable
     ZVAL_STRING(&zv, ZSTR_VAL(v));
-    dump_zval(&zv);
 
     if (zend_hash_update(span->labels, zend_string_copy(k), &zv) == NULL) {
-        php_printf("failed to update label hash table\n");
         return FAILURE;
     } else {
         return SUCCESS;
     }
 }
 
+// Add a single label to the provided trace span struct
 static int stackdriver_trace_add_label_str(stackdriver_trace_span_t *span, char *k, zend_string *v)
 {
     return stackdriver_trace_add_label(span, zend_string_init(k, strlen(k), 0), v);
 }
 
+// Merge labels from the provided zval array into the provided trace span struct
 static int stackdriver_trace_add_labels_merge(stackdriver_trace_span_t *span, zval *label_array)
 {
     ulong idx;
@@ -121,23 +121,7 @@ static int stackdriver_trace_add_labels_merge(stackdriver_trace_span_t *span, zv
     return SUCCESS;
 }
 
-static int stackdriver_trace_add_labels(stackdriver_trace_span_t *span, zval *label_array)
-{
-    ulong idx;
-    zend_string *k;
-    zval *v;
-    HashTable *ht = Z_ARRVAL_P(label_array);
-
-    ZEND_HASH_FOREACH_KEY_VAL(ht, idx, k, v) {
-        if (stackdriver_trace_add_label(span, k, Z_STR_P(v)) != SUCCESS) {
-            php_printf("failed to add label\n");
-            return FAILURE;
-        }
-    } ZEND_HASH_FOREACH_END();
-    return SUCCESS;
-}
-
-
+// Return the current timestamp as a double
 static double stackdriver_trace_now()
 {
     struct timeval tv;
@@ -166,6 +150,7 @@ static void stackdriver_trace_modify_span_with_array(stackdriver_trace_span_t *s
     } ZEND_HASH_FOREACH_END();
 }
 
+// Call the provided Closure with the provided parameters to the traced function
 static int stackdriver_trace_zend_fcall_closure(zend_execute_data *execute_data, stackdriver_trace_span_t *span, zval *closure TSRMLS_DC)
 {
     int i, num_args = ZEND_CALL_NUM_ARGS(execute_data);
@@ -186,17 +171,14 @@ static int stackdriver_trace_zend_fcall_closure(zend_execute_data *execute_data,
             NULL
             TSRMLS_CC
         ) != SUCCESS) {
-        php_printf("failed to initialize fcall info\n");
         return FAILURE;
     };
 
     fci.retval = &closure_result;
     fci.params = *params;
     fci.param_count = num_args;
-    // fci.object = fcc.object = Z_OBJ_P(execute_data->object);
 
     fcc.initialized = 1;
-    // fcc.called_scope = execute_data->called_scope;
 
     if (zend_call_function(&fci, &fcc TSRMLS_CC) != SUCCESS) {
           return FAILURE;
@@ -207,6 +189,11 @@ static int stackdriver_trace_zend_fcall_closure(zend_execute_data *execute_data,
     return SUCCESS;
 }
 
+// Handle the callback for the traced method depending on the type
+//   - if the zval is a pointer, then it's a pointer to a c-function callback
+//   - if the zval is an array, then assume it's the trace span initialization options
+//   - if the zval is a Closure, then execute the closure and take the results as
+//     the trace span initialization options
 static void stackdriver_trace_execute_callback(stackdriver_trace_span_t *span, zend_execute_data *execute_data, zval *span_options TSRMLS_DC)
 {
     stackdriver_trace_callback cb;
@@ -223,6 +210,7 @@ static void stackdriver_trace_execute_callback(stackdriver_trace_span_t *span, z
     }
 }
 
+// Start a new trace span. Inherit the parent span id from the curernt trace context.
 static stackdriver_trace_span_t *stackdriver_trace_begin(zend_string *function_name, zend_execute_data *execute_data TSRMLS_DC)
 {
     stackdriver_trace_span_t *span = emalloc(sizeof(stackdriver_trace_span_t));
@@ -243,6 +231,7 @@ static stackdriver_trace_span_t *stackdriver_trace_begin(zend_string *function_n
     return span;
 }
 
+// Finish the current trace span. Set the new current trace span to this span's parent if there is one.
 static int stackdriver_trace_finish()
 {
     stackdriver_trace_span_t *span = STACKDRIVER_TRACE_G(current_span);
@@ -259,7 +248,8 @@ static int stackdriver_trace_finish()
     return SUCCESS;
 }
 
-static zend_string *STACKDRIVER_TRACE_Generate_class_name(zend_string *class_name, zend_string *function_name)
+// Given a class name and a function name, return a new string that represents the function name
+static zend_string *stackdriver_trace_generate_class_name(zend_string *class_name, zend_string *function_name)
 {
     int len = class_name->len + function_name->len + 2;
     zend_string *result = zend_string_alloc(len, 0);
@@ -270,6 +260,7 @@ static zend_string *STACKDRIVER_TRACE_Generate_class_name(zend_string *class_nam
     return result;
 }
 
+// Given the current execution data, determine the name of the function that is being called.
 static zend_string *stackdriver_trace_get_current_function_name()
 {
     zend_execute_data *data;
@@ -294,7 +285,7 @@ static zend_string *stackdriver_trace_get_current_function_name()
 
     // Fetch the current class if any
     if (current_function->common.scope) {
-        result = STACKDRIVER_TRACE_Generate_class_name(current_function->common.scope->name, function_name);
+        result = stackdriver_trace_generate_class_name(current_function->common.scope->name, function_name);
     } else {
         result = zend_string_copy(function_name);
     }
@@ -302,6 +293,8 @@ static zend_string *stackdriver_trace_get_current_function_name()
     return result;
 }
 
+/* {{{ proto bool stackdriver_trace_begin($function_name, $handler)
+Start a new trace span */
 PHP_FUNCTION(stackdriver_trace_begin)
 {
     zend_string *function_name;
@@ -317,6 +310,8 @@ PHP_FUNCTION(stackdriver_trace_begin)
     RETURN_TRUE;
 }
 
+/* {{{ proto bool stackdriver_trace_finish()
+Finish the current trace span */
 PHP_FUNCTION(stackdriver_trace_finish)
 {
     if (stackdriver_trace_finish() == SUCCESS) {
@@ -325,6 +320,7 @@ PHP_FUNCTION(stackdriver_trace_finish)
     RETURN_FALSE;
 }
 
+// Reset the list of spans and free any allocated memory used
 static void stackdriver_trace_clear(TSRMLS_D)
 {
     int i;
@@ -342,12 +338,16 @@ static void stackdriver_trace_clear(TSRMLS_D)
     STACKDRIVER_TRACE_G(trace_parent_span_id) = 0;
 }
 
+/* {{{ proto int stackdriver_trace_clear()
+Reset the list of spans */
 PHP_FUNCTION(stackdriver_trace_clear)
 {
     stackdriver_trace_clear(TSRMLS_C);
     RETURN_TRUE;
 }
 
+/* {{{ proto int stackdriver_trace_set_context($traceId, $parentSpanId = null)
+Set the trace context */
 PHP_FUNCTION(stackdriver_trace_set_context)
 {
     zend_string *trace_id;
@@ -360,6 +360,8 @@ PHP_FUNCTION(stackdriver_trace_set_context)
     STACKDRIVER_TRACE_G(trace_parent_span_id) = parent_span_id;
 }
 
+/* {{{ proto int stackdriver_trace_context()
+Return the current trace context. Returns a Stackdriver\Trace\Context instance */
 PHP_FUNCTION(stackdriver_trace_context)
 {
     stackdriver_trace_span_t *span = STACKDRIVER_TRACE_G(current_span);
@@ -416,6 +418,7 @@ PHP_FUNCTION(stackdriver_trace_function)
         handler = &h;
     }
 
+    // TODO: clean this up at the end of the request
     PHP_STACKDRIVER_MAKE_STD_ZVAL(copy);
     ZVAL_ZVAL(copy, handler, 1, 0);
 
@@ -441,16 +444,17 @@ PHP_FUNCTION(stackdriver_trace_method)
         handler = &h;
     }
 
+    // TODO: clean this up at the end of the request
     PHP_STACKDRIVER_MAKE_STD_ZVAL(copy);
     ZVAL_ZVAL(copy, handler, 1, 0);
 
-    key = STACKDRIVER_TRACE_Generate_class_name(class_name, function_name);
+    key = stackdriver_trace_generate_class_name(class_name, function_name);
     zend_hash_update(STACKDRIVER_TRACE_G(traced_functions), key, handler);
 
     RETURN_FALSE;
 }
 
-
+// Given a HashTable of labels, write the values into the provided pointer of the label_array
 static int stackdriver_labels_to_zval_array(HashTable *ht, zval *label_array)
 {
     ulong idx;
@@ -467,14 +471,13 @@ static int stackdriver_labels_to_zval_array(HashTable *ht, zval *label_array)
             return FAILURE;
         }
 
-        // php_printf("stored\n");
     } ZEND_HASH_FOREACH_END();
 
     return SUCCESS;
 }
 
-/* {{{ proto int stackdriver_trace_method()
-Fetch the Object Handle ID from an instance */
+/* {{{ proto int stackdriver_trace_list()
+Returns an array of Stackdriver\Trace\Span instances that have been collected for this request */
 PHP_FUNCTION(stackdriver_trace_list)
 {
     int i;
@@ -556,6 +559,7 @@ static zval *get_property(zval *obj, char *property_name)
     return NULL;
 }
 
+// This callback handles adding data to the Illuminate\\Database\\Eloquent\\Builder::getModels call
 static void stackdriver_trace_callback_eloquent_query(stackdriver_trace_span_t *span, zend_execute_data *execute_data TSRMLS_DC)
 {
     zend_class_entry *ce = NULL;
@@ -574,6 +578,7 @@ static void stackdriver_trace_callback_eloquent_query(stackdriver_trace_span_t *
     }
 }
 
+// This callback handles adding data to the Illuminate\\View\\Engines\\CompilerEngine::get call
 static void stackdriver_trace_callback_laravel_view(stackdriver_trace_span_t *span, zend_execute_data *execute_data TSRMLS_DC)
 {
     zval *path = EX_VAR_NUM(0);

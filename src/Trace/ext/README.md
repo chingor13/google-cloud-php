@@ -18,6 +18,13 @@ the code is currently executing within. Whenever a span is created, it's parent
 is set the the current span, and this new span becomes the current trace span
 context.
 
+## Compatibilty
+
+This extension has been built and tested on the following PHP versions:
+
+* 7.1.x
+* 7.0.x
+
 ## Installation
 
 ### Build from source
@@ -34,7 +41,7 @@ context.
    tar -zxvf trace.tar.gz
    ```
 
-1. Goto the extension directory
+1. Go to the extension directory
 
    ```bash
    cd google-cloud-php-trace-0.1.0
@@ -55,6 +62,15 @@ context.
    ```
    extension=stackdriver_trace.so
    ```
+
+### Download from PECL (not yet available)
+
+When this extension is available on PECL, you will be able to download and install it easily using the
+`pecl` CLI tool:
+
+```bash
+pecl install stackdriver_trace
+```
 
 ## Usage
 
@@ -91,11 +107,23 @@ stackdriver_trace_method(Foobar::class, '__construct', function () {
 });
 ```
 
-### Trace a function
+Additionally, any parameters available to the function will be provided to the Closure.
 
 ```php
-stackdriver_trace_function('my_function');
+stackdriver_trace_method(Foobar::class, '__construct', function ($name) {
+  return [
+    'name' => 'Foobar::__construct',
+    'labels' => [
+      'name' => $name
+    ]
+  ];
+});
+
+// a new span is created with the label name => 'Bob'
+$foobar = new Foobar('Bob');
 ```
+
+### Trace a function
 
 Whenever the function is called, create a trace span.
 
@@ -130,14 +158,15 @@ stackdriver_trace_function('var_dump', function () {
 
 ### List spans
 
-Retrieve an array of collected spans.
+Retrieve an array of collected spans. This returns an array of `Stackdriver\Trace\Span`
+instances.
 
 ```php
-$spans = stackdriver_trace_list_spans();
+$spans = stackdriver_trace_list();
 var_dump($spans);
 ```
 
-### Get current trace context
+### Get current trace context. This returns a `Stackdriver\Trace\Context` instance.
 
 ```php
 $context = stackdriver_trace_context();
