@@ -74,7 +74,11 @@ static void php_stackdriver_trace_globals_ctor(void *pDest TSRMLS_DC)
 // This is always a zval* and should be either an array or a pointer to a callback function.
 static zval *stackdriver_trace_find_callback(zend_string *function_name)
 {
-    return zend_hash_find(STACKDRIVER_TRACE_G(traced_functions), function_name);
+    zval *ret = zend_hash_find(STACKDRIVER_TRACE_G(user_traced_functions), function_name);
+    if (ret != NULL) {
+        return ret;
+    }
+    return zend_hash_find(automatically_traced_functions, function_name);
 }
 
 // Add a label to the trace span struct
@@ -422,7 +426,7 @@ PHP_FUNCTION(stackdriver_trace_function)
     PHP_STACKDRIVER_MAKE_STD_ZVAL(copy);
     ZVAL_ZVAL(copy, handler, 1, 0);
 
-    zend_hash_update(STACKDRIVER_TRACE_G(traced_functions), function_name, copy);
+    zend_hash_update(STACKDRIVER_TRACE_G(user_traced_functions), function_name, copy);
     RETURN_TRUE;
 }
 
@@ -449,7 +453,7 @@ PHP_FUNCTION(stackdriver_trace_method)
     ZVAL_ZVAL(copy, handler, 1, 0);
 
     key = stackdriver_trace_generate_class_name(class_name, function_name);
-    zend_hash_update(STACKDRIVER_TRACE_G(traced_functions), key, handler);
+    zend_hash_update(STACKDRIVER_TRACE_G(user_traced_functions), key, handler);
 
     RETURN_FALSE;
 }
@@ -526,7 +530,7 @@ static void stackdriver_trace_register(char *name)
     zend_string *function_name = zend_string_init(name, strlen(name), 0);
     ZVAL_LONG(&handler, 1);
 
-    zend_hash_add(STACKDRIVER_TRACE_G(traced_functions), function_name, &handler);
+    zend_hash_add(automatically_traced_functions, function_name, &handler);
 }
 
 // Registers the specified method for automatic tracing. The name of the created span will
@@ -538,7 +542,7 @@ static void stackdriver_trace_register_callback(char *name, stackdriver_trace_ca
     zend_string *function_name = zend_string_init(name, strlen(name), 0);
     ZVAL_PTR(&handler, cb);
 
-    zend_hash_add(STACKDRIVER_TRACE_G(traced_functions), function_name, &handler);
+    zend_hash_add(automatically_traced_functions, function_name, &handler);
 }
 
 // Returns the zval property of the provided zval
@@ -679,6 +683,11 @@ PHP_MINIT_FUNCTION(stackdriver_trace)
     stackdriver_trace_span_minit(INIT_FUNC_ARGS_PASSTHRU);
     stackdriver_trace_context_minit(INIT_FUNC_ARGS_PASSTHRU);
 
+    // initialize storage for automatically traced functions
+    ALLOC_HASHTABLE(automatically_traced_functions);
+    zend_hash_init(automatically_traced_functions, 16, NULL, ZVAL_PTR_DTOR, 0);
+    stackdriver_trace_setup_automatic_tracing();
+
     return SUCCESS;
 }
 /* }}} */
@@ -696,11 +705,9 @@ PHP_MSHUTDOWN_FUNCTION(stackdriver_trace)
 
 PHP_RINIT_FUNCTION(stackdriver_trace)
 {
-
-    ALLOC_HASHTABLE(STACKDRIVER_TRACE_G(traced_functions));
-    zend_hash_init(STACKDRIVER_TRACE_G(traced_functions), 16, NULL, ZVAL_PTR_DTOR, 0);
-
-    stackdriver_trace_setup_automatic_tracing();
+    // initialize storage for user traced functions - per request basis
+    ALLOC_HASHTABLE(STACKDRIVER_TRACE_G(user_traced_functions));
+    zend_hash_init(STACKDRIVER_TRACE_G(user_traced_functions), 16, NULL, ZVAL_PTR_DTOR, 0);
 
     STACKDRIVER_TRACE_G(current_span) = NULL;
     STACKDRIVER_TRACE_G(spans) = emalloc(64 * sizeof(stackdriver_trace_span_t *));
