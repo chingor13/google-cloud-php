@@ -24,37 +24,37 @@ context.
 
 1. [Download a release](https://github.com/GoogleCloudPlatform/google-cloud-php-trace/releases)
 
-```bash
-curl https://github.com/GoogleCloudPlatform/google-cloud-php-trace/archive/v0.1.0.tar.gz -o trace.tar.gz
-```
+   ```bash
+   curl https://github.com/GoogleCloudPlatform/google-cloud-php-trace/archive/v0.1.0.tar.gz -o trace.tar.gz
+   ```
 
 1. Untar the package
 
-```bash
-tar -zxvf trace.tar.gz
-```
+   ```bash
+   tar -zxvf trace.tar.gz
+   ```
 
 1. Goto the extension directory
 
-```bash
-cd google-cloud-php-trace-0.1.0
-```
+   ```bash
+   cd google-cloud-php-trace-0.1.0
+   ```
 
 1. Compile the extension
 
-```bash
-phpize
-configure --enable-stackdriver-trace
-make
-make test
-make install
-```
+   ```bash
+   phpize
+   configure --enable-stackdriver-trace
+   make
+   make test
+   make install
+   ```
 
 1. Enable the stackdriver trace extension. Add the following to your `php.ini` configuration file.
 
-```
-extension=stackdriver_trace.so
-```
+   ```
+   extension=stackdriver_trace.so
+   ```
 
 ## Usage
 
