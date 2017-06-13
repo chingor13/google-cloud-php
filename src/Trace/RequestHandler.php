@@ -101,7 +101,7 @@ class RequestHandler
         }
 
         $this->tracer = $context->enabled()
-            ? extension_loaded('stackdriver') ? new ExtensionTracer($context) : new ContextTracer($context)
+            ? extension_loaded('stackdriver_trace') ? new ExtensionTracer($context) : new ContextTracer($context)
             : new NullTracer();
 
         $spanOptions = $options + [
