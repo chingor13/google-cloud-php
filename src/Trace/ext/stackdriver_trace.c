@@ -74,11 +74,7 @@ static void php_stackdriver_trace_globals_ctor(void *pDest TSRMLS_DC)
 // This is always a zval* and should be either an array or a pointer to a callback function.
 static zval *stackdriver_trace_find_callback(zend_string *function_name)
 {
-    zval *ret = zend_hash_find(STACKDRIVER_TRACE_G(user_traced_functions), function_name);
-    if (ret != NULL) {
-        return ret;
-    }
-    return zend_hash_find(automatically_traced_functions, function_name);
+    return zend_hash_find(STACKDRIVER_TRACE_G(user_traced_functions), function_name);
 }
 
 // Add a label to the trace span struct
@@ -524,155 +520,6 @@ PHP_FUNCTION(stackdriver_trace_list)
     }
 }
 
-/** BEGIN Stackdriver Trace Callbacks */
-
-// Registers the specified method for automatic tracing. The name of the created span will be
-// the provided function name.
-//
-// Example:
-//    stackdriver_trace_register("get_sidebar");
-//    stackdriver_trace_register("MyClass::someMethod");
-static void stackdriver_trace_register(char *name)
-{
-    zval handler;
-    zend_string *function_name = zend_string_init(name, strlen(name), 0);
-    ZVAL_LONG(&handler, 1);
-
-    zend_hash_add(automatically_traced_functions, function_name, &handler);
-}
-
-// Registers the specified method for automatic tracing. The name of the created span will
-// default to the provided function name. After executing the function to trace, the provided
-// callback will be executed, allowing you to modify the created span.
-static void stackdriver_trace_register_callback(char *name, stackdriver_trace_callback cb)
-{
-    zval handler;
-    zend_string *function_name = zend_string_init(name, strlen(name), 0);
-    ZVAL_PTR(&handler, cb);
-
-    zend_hash_add(automatically_traced_functions, function_name, &handler);
-}
-
-// Returns the zval property of the provided zval
-// TODO: there must be a better way to get this than iterating over the HashTable
-static zval *get_property(zval *obj, char *property_name)
-{
-    int offset = 0;
-    zend_string *k;
-    zend_class_entry *ce = obj->value.obj->ce;
-
-    ZEND_HASH_FOREACH_STR_KEY(&ce->properties_info, k) {
-        if (strcmp(property_name, ZSTR_VAL(k)) == 0) {
-            return &obj->value.obj->properties_table[offset];
-        }
-        offset++;
-    } ZEND_HASH_FOREACH_END();
-
-    return NULL;
-}
-
-// This callback handles adding data to the Illuminate\\Database\\Eloquent\\Builder::getModels call
-static void stackdriver_trace_callback_eloquent_query(stackdriver_trace_span_t *span, zend_execute_data *execute_data TSRMLS_DC)
-{
-    zend_class_entry *ce = NULL;
-    zval *eloquent_model;
-
-    span->name = zend_string_init("eloquent/get", 12, 0);
-
-    // obj is the Illuminate\Database\Eloquent\Builder
-    zval *obj = ((execute_data->This.value.obj) ? &(execute_data->This) : NULL);
-    if (obj) {
-        eloquent_model = get_property(obj, "model");
-        if (eloquent_model) {
-            ce = eloquent_model->value.obj->ce;
-            stackdriver_trace_add_label_str(span, "model", ce->name);
-        }
-    }
-}
-
-// This callback handles adding data to the Illuminate\\View\\Engines\\CompilerEngine::get call
-static void stackdriver_trace_callback_laravel_view(stackdriver_trace_span_t *span, zend_execute_data *execute_data TSRMLS_DC)
-{
-    zval *path = EX_VAR_NUM(0);
-
-    span->name = zend_string_init("laravel/view", 12, 0);
-
-    if (path != NULL && Z_TYPE_P(path) == IS_STRING) {
-        stackdriver_trace_add_label_str(span, "path", Z_STR_P(path));
-    }
-}
-
-static void stackdriver_trace_setup_automatic_tracing()
-{
-    // Guzzle
-
-    // curl
-    stackdriver_trace_register("curl_exec");
-    stackdriver_trace_register("curl_multi_add_handle");
-    stackdriver_trace_register("curl_multi_remove_handle");
-
-    // Wordpress
-    stackdriver_trace_register("get_sidebar");
-    stackdriver_trace_register("get_header");
-    stackdriver_trace_register("get_footer");
-    stackdriver_trace_register("load_textdomain");
-    stackdriver_trace_register("setup_theme");
-    stackdriver_trace_register("load_template");
-
-    // Laravel
-    stackdriver_trace_register_callback("Illuminate\\Database\\Eloquent\\Builder::getModels", stackdriver_trace_callback_eloquent_query);
-    stackdriver_trace_register("Illuminate\\Database\\Eloquent\\Model::performInsert");
-    stackdriver_trace_register("Illuminate\\Database\\Eloquent\\Model::performUpdate");
-    stackdriver_trace_register("Illuminate\\Database\\Eloquent\\Model::delete");
-    stackdriver_trace_register("Illuminate\\Database\\Eloquent\\Model::destroy");
-    stackdriver_trace_register_callback("Illuminate\\View\\Engines\\CompilerEngine::get", stackdriver_trace_callback_laravel_view);
-
-    // Symfony
-    stackdriver_trace_register("Doctrine\\ORM\\Persisters\\BasicEntityPersister::load");
-    stackdriver_trace_register("Doctrine\\ORM\\Persisters\\BasicEntityPersister::loadAll");
-    stackdriver_trace_register("Doctrine\\ORM\\Persisters\\Entity\\BasicEntityPersister::load");
-    stackdriver_trace_register("Doctrine\\ORM\\Persisters\\Entity\\BasicEntityPersister::loadAll");
-    stackdriver_trace_register("Doctrine\\ORM\\AbstractQuery::execute");
-
-    // PDO
-    stackdriver_trace_register("PDO::exec");
-    stackdriver_trace_register("PDO::query");
-    stackdriver_trace_register("PDO::commit");
-    stackdriver_trace_register("PDO::__construct");
-    stackdriver_trace_register("PDOStatement::execute");
-
-    // mysql
-    stackdriver_trace_register("mysql_query");
-    stackdriver_trace_register("mysql_connect");
-
-    // mysqli
-    stackdriver_trace_register("mysqli_query");
-    stackdriver_trace_register("mysqli::query");
-    stackdriver_trace_register("mysqli::prepare");
-    stackdriver_trace_register("mysqli_prepare");
-    stackdriver_trace_register("mysqli::commit");
-    stackdriver_trace_register("mysqli_commit");
-    stackdriver_trace_register("mysqli_connect");
-    stackdriver_trace_register("mysqli::__construct");
-    stackdriver_trace_register("mysqli::mysqli");
-    stackdriver_trace_register("mysqli_stmt_execute");
-    stackdriver_trace_register("mysqli_stmt::execute");
-
-    // pg (postgres)
-    stackdriver_trace_register("pg_query");
-    stackdriver_trace_register("pg_query_params");
-    stackdriver_trace_register("pg_execute");
-
-    // memcache
-    stackdriver_trace_register("Memcache::get");
-    stackdriver_trace_register("Memcache::set");
-    stackdriver_trace_register("Memcache::delete");
-    stackdriver_trace_register("Memcache::flush");
-    stackdriver_trace_register("Memcache::replace");
-    stackdriver_trace_register("Memcache::increment");
-    stackdriver_trace_register("Memcache::decrement");
-}
-
 /* {{{ PHP_MINIT_FUNCTION
  */
 PHP_MINIT_FUNCTION(stackdriver_trace)
@@ -690,11 +537,6 @@ PHP_MINIT_FUNCTION(stackdriver_trace)
 
     stackdriver_trace_span_minit(INIT_FUNC_ARGS_PASSTHRU);
     stackdriver_trace_context_minit(INIT_FUNC_ARGS_PASSTHRU);
-
-    // initialize storage for automatically traced functions
-    ALLOC_HASHTABLE(automatically_traced_functions);
-    zend_hash_init(automatically_traced_functions, 16, NULL, ZVAL_PTR_DTOR, 0);
-    stackdriver_trace_setup_automatic_tracing();
 
     return SUCCESS;
 }

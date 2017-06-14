@@ -41,8 +41,6 @@ PHP_MSHUTDOWN_FUNCTION(stackdriver_trace);
 PHP_RINIT_FUNCTION(stackdriver_trace);
 PHP_RSHUTDOWN_FUNCTION(stackdriver_trace);
 
-HashTable *automatically_traced_functions;
-
 ZEND_BEGIN_MODULE_GLOBALS(stackdriver_trace)
     // map of functions we're tracing to callbacks
     HashTable *user_traced_functions;
