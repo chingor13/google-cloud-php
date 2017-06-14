@@ -25,9 +25,17 @@ class Symfony
             return;
         }
 
-        stackdriver_trace_method('Doctrine\\ORM\\Persisters\\BasicEntityPersister', 'load');
+        stackdriver_trace_method('Doctrine\\ORM\\Persisters\\BasicEntityPersister', 'load', function ($criteria, $entity) {
+            return [
+                'labels' => ['entity' => get_class($entity)]
+            ];
+        });
         stackdriver_trace_method('Doctrine\\ORM\\Persisters\\BasicEntityPersister', 'loadAll');
-        stackdriver_trace_method('Doctrine\\ORM\\Persisters\\Entity\\BasicEntityPersister', 'load');
+        stackdriver_trace_method('Doctrine\\ORM\\Persisters\\Entity\\BasicEntityPersister', 'load', function ($criteria, $entity) {
+            return [
+                'labels' => ['entity' => get_class($entity)]
+            ];
+        });
         stackdriver_trace_method('Doctrine\\ORM\\Persisters\\Entity\\BasicEntityPersister', 'loadAll');
         stackdriver_trace_method('Doctrine\\ORM\\AbstractQuery', 'execute');
     }

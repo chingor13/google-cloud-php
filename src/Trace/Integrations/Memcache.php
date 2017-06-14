@@ -25,7 +25,7 @@ class Memcache
             return;
         }
 
-        $labelKeys = function ($keyOrKeys) {
+        $labelKeys = function ($memcache, $keyOrKeys) {
             $key = is_array($keyOrKeys) ? implode(",", $keyOrKeys) : $keyOrKeys;
             return [
                 'labels' => ['key' => $key]

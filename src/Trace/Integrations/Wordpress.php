@@ -30,6 +30,10 @@ class Wordpress
         stackdriver_trace_function('get_footer');
         stackdriver_trace_function('load_textdomain');
         stackdriver_trace_function('setup_theme');
-        stackdriver_trace_function('load_template');
+        stackdriver_trace_function('load_template', function ($template) {
+            return [
+                'labels' => ['template' => $template]
+            ];
+        });
     }
 }

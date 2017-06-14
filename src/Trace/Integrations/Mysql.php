@@ -39,14 +39,14 @@ class Mysql
         });
         stackdriver_trace_function('mysqli_stmt_execute');
 
-        stackdriver_trace_method('mysqli', 'query', function ($query) {
+        stackdriver_trace_method('mysqli', 'query', function ($mysqli, $query) {
             return [
                 'labels' => ['query' => $query]
             ];
         }));
         stackdriver_trace_method('mysqli', 'prepare');
         stackdriver_trace_method('mysqli', 'commit');
-        stackdriver_trace_method('mysqli', '__construct', function ($host) {
+        stackdriver_trace_method('mysqli', '__construct', function ($mysqli, $host) {
             return [
                 'labels' => ['host' => $host]
             ];
