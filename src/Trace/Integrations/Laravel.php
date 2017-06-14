@@ -26,10 +26,15 @@ class Laravel
         }
 
         stackdriver_trace_method('Illuminate\Database\Eloquent\Builder', 'getModels', function($scope, $columns) {
+            $reflection = new \ReflectionClass('Illuminate\Database\Eloquent\Builder');
+            $modelProperty = $reflection->getProperty('model');
+            $modelProperty->setAccessible(true);
+            $model = $modelProperty->getValue($scope);
+
             return [
                 'name' => 'eloquent/get',
                 'labels' => [
-                    'model' => get_class($scope->model)
+                    'model' => get_class($model)
                 ]
             ];
         });
