@@ -29,7 +29,7 @@ class Laravel
             return [
                 'name' => 'eloquent/get',
                 'labels' => [
-                    'model' => get_class($scope->model);
+                    'model' => get_class($scope->model)
                 ]
             ];
         });
