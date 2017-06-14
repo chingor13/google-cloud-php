@@ -90,12 +90,11 @@ class ExtensionTracer implements TracerInterface
      */
     public function context()
     {
-        $context = stackdriver_trace_context() + [
-            'spanId' => null
-        ];
+        // This should be a Stackdriver\Trace\Context object
+        $context = stackdriver_trace_context();
         return new TraceContext(
-            $context['traceId'],
-            $context['spanId']
+            $context->traceId(),
+            $context->spanId()
         );
     }
 
@@ -106,6 +105,8 @@ class ExtensionTracer implements TracerInterface
      */
     public function spans()
     {
+        // each span returned from stackdriver_trace_list should be a
+        // Stackdriver\Trace\Span object
         return array_map(function ($span) {
             return new TraceSpan([
                 'name' => $span->name(),
