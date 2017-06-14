@@ -6,7 +6,7 @@ Stackdriver Trace: Customize the trace span options for a method with a callback
 require_once(__DIR__ . '/common.php');
 
 // 1: Sanity test a simple profile run
-stackdriver_trace_method("Foo", "add", function($x, $y) {
+stackdriver_trace_method("Foo", "add", function($scope, $x, $y) {
     return ['name' => 'foo', 'startTime' => 0.1, 'labels' => ['asdf' => 'qwer' . $x, 'zxcv' => 'jkl;' . $y]];
 });
 $f = new Foo();

@@ -157,13 +157,21 @@ static void stackdriver_trace_modify_span_with_array(stackdriver_trace_span_t *s
 // Call the provided Closure with the provided parameters to the traced function
 static int stackdriver_trace_zend_fcall_closure(zend_execute_data *execute_data, stackdriver_trace_span_t *span, zval *closure TSRMLS_DC)
 {
-    int i, num_args = ZEND_CALL_NUM_ARGS(execute_data);
+    int i, num_args = EX_NUM_ARGS(), has_scope = 0;
     zend_fcall_info fci;
     zend_fcall_info_cache fcc;
-    zval closure_result, *params[num_args];
+    zval closure_result;
+    zval args[num_args + 1];
+
+    if (getThis() == NULL) {
+        ZVAL_NULL(&args[0]);
+    } else {
+        has_scope = 1;
+        ZVAL_ZVAL(&args[0], getThis(), 0, 1);
+    }
 
     for (i = 0; i < num_args; i++) {
-        params[i] = ZEND_CALL_VAR_NUM(execute_data, i);
+        ZVAL_ZVAL(&args[i + has_scope], EX_VAR_NUM(i), 0, 1);
     }
 
     if (zend_fcall_info_init(
@@ -179,8 +187,8 @@ static int stackdriver_trace_zend_fcall_closure(zend_execute_data *execute_data,
     };
 
     fci.retval = &closure_result;
-    fci.params = *params;
-    fci.param_count = num_args;
+    fci.params = &args[0];
+    fci.param_count = num_args + has_scope;
 
     fcc.initialized = 1;
 

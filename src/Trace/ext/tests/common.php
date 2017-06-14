@@ -23,6 +23,13 @@ namespace
 
     class Foo
     {
+        public $val;
+
+        public function __construct($val = null)
+        {
+            $this->val = $val;
+        }
+
         public static function asdf()
         {
             return 'qwer';
