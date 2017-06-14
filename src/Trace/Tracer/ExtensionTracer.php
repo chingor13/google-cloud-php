@@ -107,7 +107,14 @@ class ExtensionTracer implements TracerInterface
     public function spans()
     {
         return array_map(function ($span) {
-            return new TraceSpan($span);
+            return new TraceSpan([
+                'name' => $span->name(),
+                'spanId' => $span->spanId(),
+                'parentSpanId' => $span->parentSpanId(),
+                'startTime' => $span->startTime(),
+                'endTime' => $span->endTime(),
+                'labels' => $span->labels()
+            ]);
         }, stackdriver_trace_list());
     }
 

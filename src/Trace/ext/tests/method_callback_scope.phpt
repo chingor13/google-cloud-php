@@ -1,5 +1,5 @@
 --TEST--
-Stackdriver Trace: Customize the trace span options for a method with a callback closure that reads arguments
+Stackdriver Trace: Customize the trace span options for a method with a callback closure that reads the method scope
 --FILE--
 <?php
 
